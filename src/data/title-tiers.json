@@ -1,0 +1,74 @@
+{
+  "industries": {
+    "manufacturing": {
+      "label": "Manufacturing",
+      "tiers": [
+        "Plant Manager",
+        "Director of Operations",
+        "VP Manufacturing",
+        "Owner/President"
+      ]
+    },
+    "hospitality": {
+      "label": "Hospitality",
+      "tiers": [
+        "Director of Engineering",
+        "General Manager",
+        "VP Operations",
+        "Owner/President"
+      ]
+    },
+    "cold_storage": {
+      "label": "Cold Storage",
+      "tiers": [
+        "Facility Manager",
+        "Director of Operations",
+        "VP Operations",
+        "Owner/President"
+      ]
+    },
+    "multi_site_retail": {
+      "label": "Multi-site Retail",
+      "tiers": [
+        "Director of Facilities",
+        "VP Real Estate/Facilities",
+        "COO",
+        "Owner/President"
+      ]
+    },
+    "data_center": {
+      "label": "Data Center",
+      "tiers": [
+        "Facility Manager",
+        "Director of Facilities/Engineering",
+        "VP Infrastructure",
+        "Owner/President"
+      ]
+    },
+    "default": {
+      "label": "Other / Default",
+      "tiers": [
+        "Facilities Manager",
+        "Director of Operations",
+        "COO",
+        "Owner/President"
+      ]
+    }
+  },
+  "keywords": {
+    "Plant Manager": ["plant manager", "plant mgr", "manufacturing manager", "production manager"],
+    "Director of Operations": ["director of operations", "operations director", "dir. operations", "director, operations"],
+    "VP Manufacturing": ["vp manufacturing", "vice president manufacturing", "vp of manufacturing", "vp production"],
+    "Director of Engineering": ["director of engineering", "engineering director", "chief engineer", "director, engineering"],
+    "General Manager": ["general manager", "gm", "hotel manager"],
+    "VP Operations": ["vp operations", "vice president operations", "vp of operations", "svp operations"],
+    "Facility Manager": ["facility manager", "facilities manager", "site manager", "building manager"],
+    "Facilities Manager": ["facilities manager", "facility manager", "building manager", "maintenance manager"],
+    "Director of Facilities": ["director of facilities", "facilities director", "director, facilities"],
+    "VP Real Estate/Facilities": ["vp real estate", "vice president real estate", "vp facilities", "vp of facilities"],
+    "Director of Facilities/Engineering": ["director of facilities", "director of engineering", "facilities director", "engineering director", "director critical facilities"],
+    "VP Infrastructure": ["vp infrastructure", "vice president infrastructure", "vp data center", "vp critical facilities"],
+    "COO": ["coo", "chief operating officer"],
+    "Owner/President": ["owner", "president", "ceo", "chief executive officer", "founder", "principal", "managing partner"]
+  }
+}

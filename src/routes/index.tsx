@@ -1,24 +1,360 @@
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { StatBlock } from "@/components/StatBlock";
+import { ProspectTable } from "@/components/ProspectTable";
+import { INDUSTRY_OPTIONS, rankAllMatches, matchDecisionMaker } from "@/lib/tier-matching";
+import { MARKETS } from "@/data/deregulated-markets";
+import type { EnrichmentResult, Prospect } from "@/lib/types";
+import {
+  searchProspects,
+  enrichCompany,
+  getCampaigns,
+  sendToCampaign,
+} from "@/lib/lead-engine.functions";
+
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "Lead Engine — WaveClimate" },
+      {
+        name: "description",
+        content:
+          "Find commercial energy prospects in deregulated markets, enrich decision-makers and route them to outreach.",
+      },
+      { property: "og:title", content: "Lead Engine — WaveClimate" },
+      {
+        property: "og:description",
+        content:
+          "Prospect, qualify and route commercial energy leads across 90+ licensed suppliers.",
+      },
+    ],
+  }),
+  component: LeadEngine,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+const DEREGULATED_STATES = MARKETS.filter((m) => m.status === "deregulated");
+
+function LeadEngine() {
+  const runSearch = useServerFn(searchProspects);
+  const runEnrich = useServerFn(enrichCompany);
+  const runSend = useServerFn(sendToCampaign);
+
+  const [industry, setIndustry] = useState("manufacturing");
+  const [businessType, setBusinessType] = useState("manufacturing plant");
+  const [location, setLocation] = useState("Houston, TX");
+  const [deregulatedOnly, setDeregulatedOnly] = useState(true);
+
+  const [searching, setSearching] = useState(false);
+  const [prospects, setProspects] = useState<Prospect[]>([]);
+  const [enrichments, setEnrichments] = useState<Record<string, EnrichmentResult>>({});
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
+  const [openProspect, setOpenProspect] = useState<Prospect | null>(null);
+  const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
+  const [campaignId, setCampaignId] = useState<string>("");
+  const [sending, setSending] = useState(false);
+  const [sentCount, setSentCount] = useState(0);
+
+  const campaigns = useQuery({
+    queryKey: ["instantly-campaigns"],
+    queryFn: () => getCampaigns(),
+    retry: false,
+  });
+
+  const visible = useMemo(
+    () => (deregulatedOnly ? prospects.filter((p) => p.marketStatus === "deregulated") : prospects),
+    [prospects, deregulatedOnly],
+  );
+
+  const enrichedIds = useMemo(() => new Set(Object.keys(enrichments)), [enrichments]);
+  const contactsCount = useMemo(
+    () => Object.values(enrichments).reduce((n, e) => n + e.contacts.length, 0),
+    [enrichments],
+  );
+  const matchedCount = useMemo(
+    () =>
+      Object.values(enrichments).filter((e) => matchDecisionMaker(e.contacts, industry)).length,
+    [enrichments, industry],
+  );
+
+  async function handleSearch() {
+    setSearching(true);
+    try {
+      const results = await runSearch({
+        data: { query: businessType, location, maxResults: 20 },
+      });
+      setProspects(results);
+      if (results.length === 0) toast.info("No businesses matched that search.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Search failed.");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function handleEnrich(p: Prospect) {
+    setOpenProspect(p);
+    setSelectedEmail(null);
+    if (enrichments[p.id] || !p.domain) return;
+    setEnrichingId(p.id);
+    try {
+      const result = await runEnrich({ data: { domain: p.domain } });
+      setEnrichments((prev) => ({ ...prev, [p.id]: result }));
+      if (result.error) toast.error(result.error);
+      else if (result.contacts.length === 0) toast.info("No contacts found for this domain.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Enrichment failed.");
+    } finally {
+      setEnrichingId(null);
+    }
+  }
+
+  const openResult = openProspect ? enrichments[openProspect.id] : undefined;
+  const ranked = openResult ? rankAllMatches(openResult.contacts, industry) : [];
+  const autoBest = openResult ? matchDecisionMaker(openResult.contacts, industry) : null;
+  const activeEmail = selectedEmail ?? autoBest?.contact.email ?? null;
+  const activeMatch = ranked.find((r) => r.contact.email === activeEmail) ?? null;
+
+  async function handleSend() {
+    if (!openProspect || !activeMatch || !campaignId) return;
+    setSending(true);
+    const [firstName, ...rest] = (activeMatch.contact.name ?? "").split(" ");
+    try {
+      await runSend({
+        data: {
+          campaignId,
+          email: activeMatch.contact.email,
+          firstName: firstName || undefined,
+          lastName: rest.join(" ") || undefined,
+          companyName: openProspect.name,
+          title: activeMatch.contact.title || undefined,
+          website: openProspect.website,
+        },
+      });
+      setSentCount((n) => n + 1);
+      toast.success(`${activeMatch.contact.email} added to campaign.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not add contact to campaign.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="min-h-screen bg-background">
+      <header className="border-b border-border">
+        <div className="mx-auto flex max-w-6xl items-baseline justify-between px-6 py-6">
+          <div className="flex items-baseline gap-3">
+            <span className="headline text-lg text-foreground">WaveClimate</span>
+            <span className="eyebrow">Lead Engine</span>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            We shop your account across 90+ licensed suppliers.
+          </span>
+        </div>
+      </header>
+
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <h1 className="headline max-w-xl text-3xl text-foreground">
+          Find commercial accounts in deregulated markets.
+        </h1>
+        <div className="mt-12 grid grid-cols-2 gap-x-10 gap-y-10 md:grid-cols-4">
+          <StatBlock value={prospects.length} label="Prospects found" />
+          <StatBlock value={contactsCount} label="Contacts enriched" />
+          <StatBlock value={matchedCount} label="Decision-makers matched" />
+          <StatBlock value={sentCount} label="Sent to outreach" accent />
+        </div>
+      </section>
+
+      <section className="border-t border-border bg-surface">
+        <div className="mx-auto max-w-6xl px-6 py-12">
+          <div className="eyebrow">Step 1 — Prospect search</div>
+          <div className="mt-6 grid gap-6 md:grid-cols-4">
+            <div className="space-y-2">
+              <Label className="eyebrow">Industry</Label>
+              <Select value={industry} onValueChange={setIndustry}>
+                <SelectTrigger className="rounded-none">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {INDUSTRY_OPTIONS.map((o) => (
+                    <SelectItem key={o.key} value={o.key}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="eyebrow">Business type</Label>
+              <Input
+                className="rounded-none"
+                value={businessType}
+                onChange={(e) => setBusinessType(e.target.value)}
+                placeholder="cold storage warehouse"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="eyebrow">Area</Label>
+              <Input
+                className="rounded-none"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Dallas, TX"
+              />
+              <div className="text-xs text-muted-foreground">
+                Deregulated: {DEREGULATED_STATES.map((m) => m.code).join(", ")}
+              </div>
+            </div>
+            <div className="flex flex-col justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Switch checked={deregulatedOnly} onCheckedChange={setDeregulatedOnly} />
+                <span className="text-sm text-foreground">Deregulated only</span>
+              </div>
+              <Button
+                className="rounded-none"
+                onClick={handleSearch}
+                disabled={searching || !businessType || !location}
+              >
+                {searching ? "Searching…" : "Search"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-10">
+            {visible.length > 0 ? (
+              <ProspectTable
+                prospects={visible}
+                onEnrich={handleEnrich}
+                enrichingId={enrichingId}
+                enrichedIds={enrichedIds}
+              />
+            ) : (
+              <p className="border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">
+                {prospects.length === 0
+                  ? "Run a search to load prospects."
+                  : "No deregulated results. Turn off the filter to see everything."}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <Sheet open={!!openProspect} onOpenChange={(o) => !o && setOpenProspect(null)}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle className="headline">{openProspect?.name}</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-8 px-4 pb-10">
+            <div>
+              <div className="eyebrow">Step 2 — Decision-maker enrichment</div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {openProspect?.domain
+                  ? `Hunter domain search · ${openProspect.domain}`
+                  : "No website on file — enrichment unavailable."}
+              </p>
+            </div>
+
+            {enrichingId && <p className="text-sm text-muted-foreground">Loading contacts…</p>}
+
+            {openResult && (
+              <div>
+                <div className="eyebrow">Step 3 — Tier matching</div>
+                <div className="mt-4 space-y-2">
+                  {ranked.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No contacts returned.</p>
+                  )}
+                  {ranked.map((r) => {
+                    const active = r.contact.email === activeEmail;
+                    return (
+                      <button
+                        key={r.contact.email}
+                        onClick={() => setSelectedEmail(r.contact.email)}
+                        className={`w-full border px-4 py-3 text-left transition-colors ${
+                          active ? "border-accent bg-accent/8" : "border-border hover:bg-secondary"
+                        }`}
+                      >
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="text-sm font-medium text-foreground">
+                            {r.contact.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {r.contact.confidence}% conf.
+                          </span>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {r.contact.title || "Title unknown"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{r.contact.email}</div>
+                        <div className="mt-2 text-[11px] tracking-wide text-accent">
+                          {r.tier === "Unmatched"
+                            ? "No tier match"
+                            : `Tier ${r.tierIndex + 1} · ${r.tier}`}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {openResult && ranked.length > 0 && (
+              <div>
+                <div className="eyebrow">Step 4 — Send to outreach</div>
+                <div className="mt-4 space-y-3">
+                  <Select value={campaignId} onValueChange={setCampaignId}>
+                    <SelectTrigger className="rounded-none">
+                      <SelectValue
+                        placeholder={
+                          campaigns.isLoading
+                            ? "Loading campaigns…"
+                            : campaigns.isError
+                              ? "Campaigns unavailable"
+                              : "Select Instantly campaign"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(campaigns.data ?? []).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    className="w-full rounded-none"
+                    disabled={!campaignId || !activeMatch || sending}
+                    onClick={handleSend}
+                  >
+                    {sending ? "Adding…" : "Add contact to campaign"}
+                  </Button>
+                  {activeMatch && (
+                    <p className="text-xs text-muted-foreground">
+                      Sending {activeMatch.contact.email} ({activeMatch.tier}).
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </main>
   );
 }
