@@ -27,8 +27,8 @@ export async function searchPlaces(params: {
   location: string;
   maxResults: number;
 }): Promise<Prospect[]> {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-  if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY is not configured.");
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_API_KEY;
+  if (!apiKey) throw new Error("Google Places API key is not configured.");
 
   const textQuery = `${params.query} in ${params.location}`;
   const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
