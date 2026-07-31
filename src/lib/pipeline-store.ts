@@ -1,0 +1,88 @@
+import type { EnergyPriority } from "@/lib/energy-priority";
+
+export type LeadStatus =
+  | "Pending"
+  | "Sent"
+  | "Opened"
+  | "Clicked"
+  | "Replied"
+  | "Interested"
+  | "Not interested"
+  | "Bounced";
+
+export const LEAD_STATUSES: LeadStatus[] = [
+  "Pending",
+  "Sent",
+  "Opened",
+  "Clicked",
+  "Replied",
+  "Interested",
+  "Not interested",
+  "Bounced",
+];
+
+/** Statuses that count as real engagement for the summary stat block. */
+export const ENGAGED_STATUSES: LeadStatus[] = ["Replied", "Interested"];
+
+export interface PipelineRecord {
+  /** Instantly lead id — the primary key used for status refresh. */
+  leadId: string;
+  businessName: string;
+  contactName: string;
+  title: string;
+  email: string;
+  tier: string;
+  industry: string;
+  industryLabel: string;
+  deregulated: string;
+  energyPriority: EnergyPriority;
+  campaignId: string;
+  campaignName: string;
+  dateAdded: string;
+  status: LeadStatus;
+  lastSynced?: string;
+}
+
+const KEY = "waveclimate.pipeline.v1";
+
+function isBrowser() {
+  return typeof window !== "undefined";
+}
+
+export function loadPipeline(): PipelineRecord[] {
+  if (!isBrowser()) return [];
+  try {
+    const raw = window.localStorage.getItem(KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as PipelineRecord[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function savePipeline(records: PipelineRecord[]) {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(records));
+  } catch {
+    /* storage full or unavailable — keep the page working */
+  }
+}
+
+/** Upsert a record keyed by Instantly lead id. */
+export function addPipelineRecord(record: PipelineRecord) {
+  const existing = loadPipeline().filter((r) => r.leadId !== record.leadId);
+  savePipeline([record, ...existing]);
+}
+
+/** Merge synced statuses into stored records; unknown ids keep last-known status. */
+export function applyStatusUpdates(
+  records: PipelineRecord[],
+  updates: Record<string, LeadStatus>,
+  syncedAt: string,
+): PipelineRecord[] {
+  return records.map((r) =>
+    updates[r.leadId] ? { ...r, status: updates[r.leadId], lastSynced: syncedAt } : r,
+  );
+}
