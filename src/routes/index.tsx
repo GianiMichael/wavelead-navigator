@@ -305,7 +305,13 @@ function LeadEngine() {
                           {r.tier === "Unmatched"
                             ? "No tier match"
                             : `Tier ${r.tierIndex + 1} · ${r.tier}`}
+                          {r.excluded && (
+                            <span className="ml-2 text-muted-foreground">
+                              Non-site scope — deprioritized
+                            </span>
+                          )}
                         </div>
+
                       </button>
                     );
                   })}

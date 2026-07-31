@@ -2,11 +2,17 @@ import tiersConfig from "@/data/title-tiers.json";
 import type { EnrichedContact } from "@/lib/types";
 
 type TiersConfig = {
+  excludeTitleKeywords?: string[];
+  excludeNote?: string;
   industries: Record<string, { label: string; tiers: string[] }>;
   keywords: Record<string, string[]>;
 };
 
 const CONFIG = tiersConfig as TiersConfig;
+
+export const EXCLUDE_TITLE_KEYWORDS = (CONFIG.excludeTitleKeywords ?? []).map((k) =>
+  k.toLowerCase(),
+);
 
 export const INDUSTRY_OPTIONS = Object.entries(CONFIG.industries).map(([key, v]) => ({
   key,
@@ -20,6 +26,14 @@ export function tiersForIndustry(industryKey: string): string[] {
 
 function normalize(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** True when the title contains a scope word (Global, Corporate, …). */
+export function hasExcludedScope(title: string): boolean {
+  const t = normalize(title);
+  if (!t) return false;
+  const words = new Set(t.split(" "));
+  return EXCLUDE_TITLE_KEYWORDS.some((k) => words.has(k) || t.includes(k));
 }
 
 /** 0..1 loose similarity between a title and a tier keyword. */
@@ -40,6 +54,16 @@ export interface TierMatch {
   tier: string;
   tierIndex: number;
   score: number;
+  /** Title contained a Global/Corporate/etc. scope word — deprioritized. */
+  excluded: boolean;
+}
+
+/** Facility-specific matches always beat scope-word matches, regardless of tier. */
+function isBetter(a: TierMatch, b: TierMatch | null): boolean {
+  if (!b) return true;
+  if (a.excluded !== b.excluded) return !a.excluded;
+  if (a.tierIndex !== b.tierIndex) return a.tierIndex < b.tierIndex;
+  return a.score > b.score;
 }
 
 /** Select the best decision-maker for an industry from a contact list. */
@@ -56,14 +80,14 @@ export function matchDecisionMaker(
       if (!contact.title) return;
       const score = Math.max(...keywords.map((k) => keywordScore(contact.title, k)));
       if (score < 0.5) return;
-      const candidate: TierMatch = { contact, tier, tierIndex, score };
-      if (
-        !best ||
-        candidate.tierIndex < best.tierIndex ||
-        (candidate.tierIndex === best.tierIndex && candidate.score > best.score)
-      ) {
-        best = candidate;
-      }
+      const candidate: TierMatch = {
+        contact,
+        tier,
+        tierIndex,
+        score,
+        excluded: hasExcludedScope(contact.title),
+      };
+      if (isBetter(candidate, best)) best = candidate;
     });
   });
 
@@ -74,15 +98,21 @@ export function rankAllMatches(contacts: EnrichedContact[], industryKey: string)
   const tiers = tiersForIndustry(industryKey);
   const out: TierMatch[] = [];
   contacts.forEach((contact) => {
+    const excluded = hasExcludedScope(contact.title ?? "");
     let bestForContact: TierMatch | null = null;
     tiers.forEach((tier, tierIndex) => {
       const keywords = CONFIG.keywords[tier] ?? [normalize(tier)];
       const score = Math.max(...keywords.map((k) => keywordScore(contact.title ?? "", k)));
       if (score >= 0.5 && (!bestForContact || tierIndex < bestForContact.tierIndex)) {
-        bestForContact = { contact, tier, tierIndex, score };
+        bestForContact = { contact, tier, tierIndex, score, excluded };
       }
     });
-    out.push(bestForContact ?? { contact, tier: "Unmatched", tierIndex: 99, score: 0 });
+    out.push(bestForContact ?? { contact, tier: "Unmatched", tierIndex: 99, score: 0, excluded });
   });
-  return out.sort((a, b) => a.tierIndex - b.tierIndex || b.score - a.score);
+  return out.sort(
+    (a, b) =>
+      Number(a.excluded) - Number(b.excluded) ||
+      a.tierIndex - b.tierIndex ||
+      b.score - a.score,
+  );
 }

@@ -1,11 +1,43 @@
 {
+  "excludeTitleKeywords": ["global", "corporate", "international", "regional"],
+  "excludeNote": "Titles containing these words are deprioritized even if they match a tier, since they usually indicate the person is not tied to the specific facility being searched. Prefer a lower-tier facility-specific match over a higher-tier title containing these words.",
   "industries": {
+    "grocery": {
+      "label": "Grocery",
+      "tiers": [
+        "Store Manager",
+        "District Manager",
+        "Facilities Manager",
+        "Energy Manager",
+        "Director of Store Operations",
+        "VP Operations",
+        "Owner/President"
+      ]
+    },
+    "healthcare": {
+      "label": "Healthcare",
+      "tiers": [
+        "Facilities Director",
+        "Director of Plant Operations",
+        "Chief Engineer",
+        "Energy Manager",
+        "VP Facilities",
+        "COO",
+        "CEO/Owner"
+      ]
+    },
     "manufacturing": {
       "label": "Manufacturing",
       "tiers": [
         "Plant Manager",
+        "Site Director",
+        "Plant Engineer",
+        "Facilities Manager",
+        "EHS Manager",
+        "Energy Manager",
         "Director of Operations",
         "VP Manufacturing",
+        "General Manager",
         "Owner/President"
       ]
     },
@@ -13,15 +45,45 @@
       "label": "Hospitality",
       "tiers": [
         "Director of Engineering",
+        "Chief Engineer",
+        "Facilities Manager",
+        "Energy Manager",
         "General Manager",
         "VP Operations",
         "Owner/President"
       ]
     },
+    "restaurants": {
+      "label": "Restaurants",
+      "tiers": [
+        "General Manager",
+        "Multi-Unit Manager",
+        "Director of Operations",
+        "VP Operations",
+        "Owner/Franchisee"
+      ]
+    },
+    "education": {
+      "label": "Education",
+      "tiers": [
+        "Facilities Director",
+        "Director of Operations",
+        "Business Manager",
+        "Superintendent",
+        "Head of School/Owner"
+      ]
+    },
+    "car_wash": {
+      "label": "Car Wash",
+      "tiers": ["General Manager", "Operations Manager", "Owner/President"]
+    },
     "cold_storage": {
       "label": "Cold Storage",
       "tiers": [
         "Facility Manager",
+        "Plant Engineer",
+        "Refrigeration Manager",
+        "Energy Manager",
         "Director of Operations",
         "VP Operations",
         "Owner/President"
@@ -30,7 +92,10 @@
     "multi_site_retail": {
       "label": "Multi-site Retail",
       "tiers": [
+        "Facilities Manager",
+        "Store Operations Manager",
         "Director of Facilities",
+        "Energy Manager",
         "VP Real Estate/Facilities",
         "COO",
         "Owner/President"
@@ -40,35 +105,136 @@
       "label": "Data Center",
       "tiers": [
         "Facility Manager",
+        "Critical Facilities Manager",
         "Director of Facilities/Engineering",
+        "Energy Manager",
         "VP Infrastructure",
         "Owner/President"
       ]
     },
     "default": {
       "label": "Other / Default",
-      "tiers": [
-        "Facilities Manager",
-        "Director of Operations",
-        "COO",
-        "Owner/President"
-      ]
+      "tiers": ["Facilities Manager", "Director of Operations", "COO", "Owner/President"]
     }
   },
   "keywords": {
+    "Store Manager": ["store manager", "store mgr", "retail store manager"],
+    "District Manager": ["district manager", "area manager", "district mgr"],
+    "Director of Store Operations": [
+      "director of store operations",
+      "store operations director",
+      "director, store operations"
+    ],
+    "Store Operations Manager": ["store operations manager", "retail operations manager"],
+    "Facilities Director": [
+      "facilities director",
+      "director of facilities",
+      "director, facilities"
+    ],
+    "Director of Plant Operations": [
+      "director of plant operations",
+      "plant operations director",
+      "director plant ops"
+    ],
+    "Chief Engineer": ["chief engineer", "chief building engineer", "head engineer"],
+    "Energy Manager": [
+      "energy manager",
+      "energy engineer",
+      "utilities manager",
+      "director of energy",
+      "sustainability manager"
+    ],
+    "VP Facilities": ["vp facilities", "vice president facilities", "vp of facilities"],
+    "CEO/Owner": ["ceo", "chief executive officer", "owner", "founder", "principal"],
     "Plant Manager": ["plant manager", "plant mgr", "manufacturing manager", "production manager"],
-    "Director of Operations": ["director of operations", "operations director", "dir. operations", "director, operations"],
-    "VP Manufacturing": ["vp manufacturing", "vice president manufacturing", "vp of manufacturing", "vp production"],
-    "Director of Engineering": ["director of engineering", "engineering director", "chief engineer", "director, engineering"],
+    "Site Director": ["site director", "site leader", "site head", "director, site"],
+    "Plant Engineer": ["plant engineer", "maintenance engineer", "manufacturing engineer"],
+    "EHS Manager": [
+      "ehs manager",
+      "environmental health and safety manager",
+      "hse manager",
+      "safety manager"
+    ],
+    "Director of Operations": [
+      "director of operations",
+      "operations director",
+      "dir. operations",
+      "director, operations"
+    ],
+    "VP Manufacturing": [
+      "vp manufacturing",
+      "vice president manufacturing",
+      "vp of manufacturing",
+      "vp production"
+    ],
+    "Director of Engineering": [
+      "director of engineering",
+      "engineering director",
+      "director, engineering"
+    ],
     "General Manager": ["general manager", "gm", "hotel manager"],
-    "VP Operations": ["vp operations", "vice president operations", "vp of operations", "svp operations"],
+    "Multi-Unit Manager": ["multi unit manager", "multi-unit manager", "area coach", "market manager"],
+    "Operations Manager": ["operations manager", "ops manager"],
+    "Business Manager": ["business manager", "business administrator", "director of finance"],
+    "Superintendent": ["superintendent", "asst superintendent", "assistant superintendent"],
+    "Head of School/Owner": ["head of school", "principal", "owner", "president"],
+    "Owner/Franchisee": ["owner", "franchisee", "franchise owner", "president"],
+    "VP Operations": [
+      "vp operations",
+      "vice president operations",
+      "vp of operations",
+      "svp operations"
+    ],
     "Facility Manager": ["facility manager", "facilities manager", "site manager", "building manager"],
-    "Facilities Manager": ["facilities manager", "facility manager", "building manager", "maintenance manager"],
-    "Director of Facilities": ["director of facilities", "facilities director", "director, facilities"],
-    "VP Real Estate/Facilities": ["vp real estate", "vice president real estate", "vp facilities", "vp of facilities"],
-    "Director of Facilities/Engineering": ["director of facilities", "director of engineering", "facilities director", "engineering director", "director critical facilities"],
-    "VP Infrastructure": ["vp infrastructure", "vice president infrastructure", "vp data center", "vp critical facilities"],
+    "Facilities Manager": [
+      "facilities manager",
+      "facility manager",
+      "building manager",
+      "maintenance manager"
+    ],
+    "Critical Facilities Manager": [
+      "critical facilities manager",
+      "critical environment manager",
+      "data center manager"
+    ],
+    "Refrigeration Manager": [
+      "refrigeration manager",
+      "refrigeration engineer",
+      "ammonia refrigeration manager"
+    ],
+    "Director of Facilities": [
+      "director of facilities",
+      "facilities director",
+      "director, facilities"
+    ],
+    "VP Real Estate/Facilities": [
+      "vp real estate",
+      "vice president real estate",
+      "vp facilities",
+      "vp of facilities"
+    ],
+    "Director of Facilities/Engineering": [
+      "director of facilities",
+      "director of engineering",
+      "facilities director",
+      "engineering director",
+      "director critical facilities"
+    ],
+    "VP Infrastructure": [
+      "vp infrastructure",
+      "vice president infrastructure",
+      "vp data center",
+      "vp critical facilities"
+    ],
     "COO": ["coo", "chief operating officer"],
-    "Owner/President": ["owner", "president", "ceo", "chief executive officer", "founder", "principal", "managing partner"]
+    "Owner/President": [
+      "owner",
+      "president",
+      "ceo",
+      "chief executive officer",
+      "founder",
+      "principal",
+      "managing partner"
+    ]
   }
 }
