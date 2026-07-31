@@ -132,6 +132,32 @@ function LeadEngine() {
   const activeEmail = selectedEmail ?? autoBest?.contact.email ?? null;
   const activeMatch = ranked.find((r) => r.contact.email === activeEmail) ?? null;
 
+  function renderContact(r: (typeof ranked)[number]) {
+    const active = r.contact.email === activeEmail;
+    return (
+      <button
+        key={r.contact.email}
+        onClick={() => setSelectedEmail(r.contact.email)}
+        className={`w-full border px-4 py-3 text-left transition-colors ${
+          active ? "border-accent bg-accent/8" : "border-border hover:bg-secondary"
+        }`}
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-sm font-medium text-foreground">{r.contact.name}</span>
+          <span className="text-xs text-muted-foreground">{r.contact.confidence}% conf.</span>
+        </div>
+        <div className="text-sm text-muted-foreground">{r.contact.title || "Title unknown"}</div>
+        <div className="text-xs text-muted-foreground">{r.contact.email}</div>
+        <div className="mt-2 text-[11px] tracking-wide text-accent">
+          {r.tier === "Unmatched" ? "No tier match" : `Tier ${r.tierIndex + 1} · ${r.tier}`}
+          {r.excluded && (
+            <span className="ml-2 text-muted-foreground">Non-site scope — deprioritized</span>
+          )}
+        </div>
+      </button>
+    );
+  }
+
   async function handleSend() {
     if (!openProspect || !activeMatch || !campaignId) return;
     setSending(true);
