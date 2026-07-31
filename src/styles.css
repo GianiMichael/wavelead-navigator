@@ -175,3 +175,52 @@
   font-weight: 500;
 }
 
+
+/* ── Pipeline "command center" surface ─────────────────────────────── */
+
+.pipeline-scope {
+  --cc-bg: oklch(0.16 0.028 275);
+  --cc-fg: oklch(0.97 0.008 280);
+  --cc-muted: oklch(0.72 0.026 280);
+  --cc-grad: linear-gradient(
+    100deg,
+    oklch(0.62 0.24 300) 0%,
+    oklch(0.66 0.26 340) 48%,
+    oklch(0.82 0.15 55) 100%
+  );
+  background-color: var(--cc-bg);
+  color: var(--cc-fg);
+}
+
+@utility glass-panel {
+  background: color-mix(in oklab, white 6%, transparent);
+  border: 1px solid color-mix(in oklab, white 12%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 14%, transparent),
+    0 18px 48px -28px oklch(0 0 0 / 0.9);
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    background 220ms ease;
+}
+
+@utility glass-hover {
+  &:hover {
+    transform: translateY(-2px);
+    background: color-mix(in oklab, white 9%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 18%, transparent),
+      0 26px 60px -30px oklch(0.66 0.26 340 / 0.7);
+  }
+}
+
+@utility grad-text {
+  background-image: var(--cc-grad);
+  background-clip: text;
+  color: transparent;
+}
+
+@utility grad-fill {
+  background-image: var(--cc-grad);
+}
