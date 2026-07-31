@@ -66,6 +66,7 @@ function LeadEngine() {
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
   const [openProspect, setOpenProspect] = useState<Prospect | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
+  const [showOthers, setShowOthers] = useState(false);
   const [campaignId, setCampaignId] = useState<string>("");
   const [sending, setSending] = useState(false);
   const [sentCount, setSentCount] = useState(0);
