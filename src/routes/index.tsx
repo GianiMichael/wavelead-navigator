@@ -126,6 +126,8 @@ function LeadEngine() {
 
   const openResult = openProspect ? enrichments[openProspect.id] : undefined;
   const ranked = openResult ? rankAllMatches(openResult.contacts, industry) : [];
+  const topMatches = ranked.filter((r) => r.tier !== "Unmatched" && r.tierIndex < 4).slice(0, 4);
+  const otherContacts = ranked.filter((r) => !topMatches.includes(r));
   const autoBest = openResult ? matchDecisionMaker(openResult.contacts, industry) : null;
   const activeEmail = selectedEmail ?? autoBest?.contact.email ?? null;
   const activeMatch = ranked.find((r) => r.contact.email === activeEmail) ?? null;
