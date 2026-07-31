@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { searchPlaces } from "@/lib/places.server";
 import { enrichDomain } from "@/lib/enrichment.server";
-import { listCampaigns, addLead } from "@/lib/instantly.server";
+import { listCampaigns, addLead, fetchLeadStatuses } from "@/lib/instantly.server";
 
 export const searchProspects = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
@@ -48,4 +48,13 @@ export const sendToCampaign = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const result = await addLead(data);
     return { ok: true as const, id: result.id };
+  });
+
+export const syncLeadStatuses = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z.object({ leadIds: z.array(z.string().min(1)).max(500) }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const statuses = await fetchLeadStatuses(data.leadIds);
+    return { statuses, syncedAt: new Date().toISOString() };
   });
