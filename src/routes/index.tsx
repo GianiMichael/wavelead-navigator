@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -20,6 +20,8 @@ import { StatBlock } from "@/components/StatBlock";
 import { ProspectTable } from "@/components/ProspectTable";
 import { INDUSTRY_OPTIONS, rankAllMatches, matchDecisionMaker } from "@/lib/tier-matching";
 import { MARKETS } from "@/data/deregulated-markets";
+import { energyPriorityForIndustry } from "@/lib/energy-priority";
+import { addPipelineRecord } from "@/lib/pipeline-store";
 import type { EnrichmentResult, Prospect } from "@/lib/types";
 import {
   searchProspects,
@@ -164,7 +166,7 @@ function LeadEngine() {
     setSending(true);
     const [firstName, ...rest] = (activeMatch.contact.name ?? "").split(" ");
     try {
-      await runSend({
+      const res = await runSend({
         data: {
           campaignId,
           email: activeMatch.contact.email,
@@ -174,6 +176,30 @@ function LeadEngine() {
           title: activeMatch.contact.title || undefined,
           website: openProspect.website,
         },
+      });
+      const industryLabel =
+        INDUSTRY_OPTIONS.find((o) => o.key === industry)?.label ?? industry;
+      addPipelineRecord({
+        leadId: res.id ?? `${campaignId}:${activeMatch.contact.email}`,
+        businessName: openProspect.name,
+        contactName: activeMatch.contact.name,
+        title: activeMatch.contact.title,
+        email: activeMatch.contact.email,
+        tier:
+          activeMatch.tier === "Unmatched"
+            ? "Unmatched"
+            : `Tier ${activeMatch.tierIndex + 1}`,
+        industry,
+        industryLabel,
+        deregulated:
+          openProspect.marketStatus.charAt(0).toUpperCase() +
+          openProspect.marketStatus.slice(1),
+        energyPriority: energyPriorityForIndustry(industry),
+        campaignId,
+        campaignName:
+          (campaigns.data ?? []).find((c) => c.id === campaignId)?.name ?? "Campaign",
+        dateAdded: new Date().toISOString(),
+        status: "Pending",
       });
       setSentCount((n) => n + 1);
       toast.success(`${activeMatch.contact.email} added to campaign.`);
@@ -192,9 +218,14 @@ function LeadEngine() {
             <span className="headline text-lg text-foreground">WaveClimate</span>
             <span className="eyebrow">Lead Engine</span>
           </div>
-          <span className="text-xs text-muted-foreground">
-            We shop your account across 90+ licensed suppliers.
-          </span>
+          <nav className="flex items-center gap-5 text-sm">
+            <Link to="/" className="font-medium text-foreground">
+              Lead Engine
+            </Link>
+            <Link to="/pipeline" className="text-muted-foreground transition-colors hover:text-foreground">
+              Pipeline
+            </Link>
+          </nav>
         </div>
       </header>
 
