@@ -1,6 +1,6 @@
 import { lookupMarket, stateFromAddress } from "@/data/deregulated-markets";
 import { findBenchmark } from "@/data/energy-benchmarking";
-import type { Prospect } from "@/lib/types";
+import type { Prospect, ProspectSearchResult } from "@/lib/types";
 
 interface PlacesPlace {
   id: string;
@@ -26,7 +26,7 @@ export async function searchPlaces(params: {
   query: string;
   location: string;
   maxResults: number;
-}): Promise<Prospect[]> {
+}): Promise<ProspectSearchResult> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error("Google Places API key is not configured.");
 
@@ -53,8 +53,12 @@ export async function searchPlaces(params: {
 
   const json = (await res.json()) as { places?: PlacesPlace[] };
   const places = json.places ?? [];
+  // Domain-based enrichment (Hunter/Prospeo/Snov) is impossible without a
+  // website, so drop those results here and report how many were dropped.
+  const withSite = places.filter((p) => !!p.websiteUri);
+  const excludedNoWebsite = places.length - withSite.length;
 
-  return places.map((p): Prospect => {
+  const prospects = withSite.map((p): Prospect => {
     const name = p.displayName?.text ?? "Unnamed business";
     const address = p.formattedAddress ?? "";
     const state = stateFromAddress(address);
@@ -84,4 +88,6 @@ export async function searchPlaces(params: {
         : undefined,
     };
   });
+
+  return { prospects, excludedNoWebsite };
 }
