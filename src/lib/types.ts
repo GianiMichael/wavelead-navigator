@@ -30,9 +30,18 @@ export interface EnrichedContact {
 
 export interface EnrichmentResult {
   domain: string;
+  /** Provider that supplied the returned contacts. */
   provider: string;
   contacts: EnrichedContact[];
+  /** Providers tried, in waterfall order. */
+  attempted?: string[];
   error?: string;
+}
+
+export interface ProspectSearchResult {
+  prospects: Prospect[];
+  /** Places results dropped because they had no website (undomainable). */
+  excludedNoWebsite: number;
 }
 
 export interface InstantlyCampaign {
