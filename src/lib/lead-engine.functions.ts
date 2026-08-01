@@ -21,10 +21,18 @@ export const searchProspects = createServerFn({ method: "POST" })
 
 export const enrichCompany = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    z.object({ domain: z.string().min(3).max(255) }).parse(data),
+    z
+      .object({
+        domain: z.string().min(3).max(255),
+        industry: z.string().min(1).max(60).default("default"),
+      })
+      .parse(data),
   )
   .handler(async ({ data }) => {
-    return await enrichDomain(data.domain.replace(/^https?:\/\//, "").replace(/\/.*$/, ""));
+    return await enrichDomain(
+      data.domain.replace(/^https?:\/\//, "").replace(/\/.*$/, ""),
+      data.industry,
+    );
   });
 
 export const getCampaigns = createServerFn({ method: "GET" }).handler(async () => {
