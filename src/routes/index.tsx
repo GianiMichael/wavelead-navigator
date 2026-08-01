@@ -79,6 +79,11 @@ function LeadEngine() {
   const [campaignId, setCampaignId] = useState<string>("");
   const [sending, setSending] = useState(false);
   const [sentCount, setSentCount] = useState(0);
+  const [cachedSet, setCachedSet] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setCachedSet(loadCachedDomains());
+  }, []);
 
   const campaigns = useQuery({
     queryKey: ["instantly-campaigns"],
@@ -102,6 +107,15 @@ function LeadEngine() {
     [enrichments, industry],
   );
 
+  /** Industry drives tier matching; it also seeds a Places keyword to edit. */
+  function handleIndustryChange(next: string) {
+    const previousDefault = defaultBusinessType(industry);
+    setIndustry(next);
+    if (!businessType.trim() || businessType.trim() === previousDefault) {
+      setBusinessType(defaultBusinessType(next));
+    }
+  }
+
   async function handleSearch() {
     setSearching(true);
     try {
@@ -121,10 +135,21 @@ function LeadEngine() {
     setOpenProspect(p);
     setSelectedEmail(null);
     if (enrichments[p.id] || !p.domain) return;
+
+    // Never spend a Hunter credit on a domain we've already enriched.
+    const cached = getCachedEnrichment(p.domain);
+    if (cached) {
+      setEnrichments((prev) => ({ ...prev, [p.id]: cached }));
+      toast.info("Loaded saved enrichment — no Hunter credit used.");
+      return;
+    }
+
     setEnrichingId(p.id);
     try {
       const result = await runEnrich({ data: { domain: p.domain } });
       setEnrichments((prev) => ({ ...prev, [p.id]: result }));
+      saveEnrichment(p.domain, result);
+      setCachedSet(loadCachedDomains());
       if (result.error) toast.error(result.error);
       else if (result.contacts.length === 0) toast.info("No contacts found for this domain.");
     } catch (err) {
@@ -133,6 +158,7 @@ function LeadEngine() {
       setEnrichingId(null);
     }
   }
+
 
   const openResult = openProspect ? enrichments[openProspect.id] : undefined;
   const ranked = openResult ? rankAllMatches(openResult.contacts, industry) : [];
