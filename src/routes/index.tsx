@@ -22,6 +22,13 @@ import { INDUSTRY_OPTIONS, rankAllMatches, matchDecisionMaker } from "@/lib/tier
 import { MARKETS } from "@/data/deregulated-markets";
 import { energyPriorityForIndustry } from "@/lib/energy-priority";
 import { addPipelineRecord } from "@/lib/pipeline-store";
+import { defaultBusinessType } from "@/lib/industry-defaults";
+import {
+  cachedDomains as loadCachedDomains,
+  getCachedEnrichment,
+  saveEnrichment,
+} from "@/lib/enrichment-cache";
+
 import type { EnrichmentResult, Prospect } from "@/lib/types";
 import {
   searchProspects,
