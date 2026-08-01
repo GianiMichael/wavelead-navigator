@@ -8,8 +8,8 @@ export function StatBlock({
   accent?: boolean;
 }) {
   return (
-    <div className="border-t border-border pt-5">
-      <div className={accent ? "stat-number text-accent" : "stat-number text-foreground"}>
+    <div className="glass-panel rounded-xl px-5 py-6">
+      <div className={accent ? "stat-number grad-text" : "stat-number text-foreground"}>
         {value}
       </div>
       <div className="eyebrow mt-3">{label}</div>

@@ -3,7 +3,10 @@ import { Button } from "@/components/ui/button";
 
 function MarketBadge({ status }: { status: Prospect["marketStatus"] }) {
   const map: Record<Prospect["marketStatus"], { label: string; className: string }> = {
-    deregulated: { label: "Deregulated", className: "bg-accent/12 text-accent border-accent/30" },
+    deregulated: {
+      label: "Deregulated",
+      className: "border-primary/40 bg-primary/15 text-foreground",
+    },
     partial: { label: "Partial", className: "bg-muted text-muted-foreground border-border" },
     regulated: { label: "Regulated", className: "bg-muted text-muted-foreground border-border" },
     unknown: { label: "Unknown", className: "bg-muted text-muted-foreground border-border" },
@@ -11,7 +14,7 @@ function MarketBadge({ status }: { status: Prospect["marketStatus"] }) {
   const s = map[status];
   return (
     <span
-      className={`inline-flex items-center border px-2 py-0.5 text-[11px] font-medium tracking-wide ${s.className}`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium tracking-wide ${s.className}`}
     >
       {s.label}
     </span>
@@ -23,17 +26,22 @@ export function ProspectTable({
   onEnrich,
   enrichingId,
   enrichedIds,
+  cachedDomains,
 }: {
   prospects: Prospect[];
   onEnrich: (p: Prospect) => void;
   enrichingId: string | null;
   enrichedIds: Set<string>;
+  cachedDomains: Set<string>;
 }) {
+  const isCached = (p: Prospect) =>
+    !!p.domain && cachedDomains.has(p.domain.trim().toLowerCase().replace(/^www\./, ""));
+
   return (
-    <div className="overflow-x-auto border border-border">
+    <div className="glass-panel overflow-x-auto rounded-xl">
       <table className="w-full min-w-[900px] text-sm">
         <thead>
-          <tr className="border-b border-border bg-secondary/60 text-left">
+          <tr className="border-b border-border text-left">
             <th className="eyebrow px-4 py-3 font-medium">Business</th>
             <th className="eyebrow px-4 py-3 font-medium">Address</th>
             <th className="eyebrow px-4 py-3 font-medium">Category</th>
@@ -44,9 +52,19 @@ export function ProspectTable({
         </thead>
         <tbody>
           {prospects.map((p) => (
-            <tr key={p.id} className="border-b border-border last:border-0 align-top">
+            <tr
+              key={p.id}
+              className="border-b border-border align-top transition-colors last:border-0 hover:bg-white/[0.03]"
+            >
               <td className="px-4 py-4">
-                <div className="font-medium text-foreground">{p.name}</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-foreground">{p.name}</span>
+                  {isCached(p) && (
+                    <span className="inline-flex items-center rounded-full border border-border bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      Already enriched
+                    </span>
+                  )}
+                </div>
                 {p.domain ? (
                   <div className="text-xs text-muted-foreground">{p.domain}</div>
                 ) : (
@@ -81,13 +99,14 @@ export function ProspectTable({
               <td className="px-4 py-4 text-right">
                 <Button
                   size="sm"
-                  variant={enrichedIds.has(p.id) ? "outline" : "default"}
+                  variant={enrichedIds.has(p.id) || isCached(p) ? "outline" : "default"}
+                  className="rounded-full"
                   disabled={!p.domain || enrichingId === p.id}
                   onClick={() => onEnrich(p)}
                 >
                   {enrichingId === p.id
                     ? "Enriching…"
-                    : enrichedIds.has(p.id)
+                    : enrichedIds.has(p.id) || isCached(p)
                       ? "View contacts"
                       : "Enrich"}
                 </Button>

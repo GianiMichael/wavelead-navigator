@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +22,13 @@ import { INDUSTRY_OPTIONS, rankAllMatches, matchDecisionMaker } from "@/lib/tier
 import { MARKETS } from "@/data/deregulated-markets";
 import { energyPriorityForIndustry } from "@/lib/energy-priority";
 import { addPipelineRecord } from "@/lib/pipeline-store";
+import { defaultBusinessType } from "@/lib/industry-defaults";
+import {
+  cachedDomains as loadCachedDomains,
+  getCachedEnrichment,
+  saveEnrichment,
+} from "@/lib/enrichment-cache";
+
 import type { EnrichmentResult, Prospect } from "@/lib/types";
 import {
   searchProspects,
@@ -72,6 +79,11 @@ function LeadEngine() {
   const [campaignId, setCampaignId] = useState<string>("");
   const [sending, setSending] = useState(false);
   const [sentCount, setSentCount] = useState(0);
+  const [cachedSet, setCachedSet] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setCachedSet(loadCachedDomains());
+  }, []);
 
   const campaigns = useQuery({
     queryKey: ["instantly-campaigns"],
@@ -95,6 +107,15 @@ function LeadEngine() {
     [enrichments, industry],
   );
 
+  /** Industry drives tier matching; it also seeds a Places keyword to edit. */
+  function handleIndustryChange(next: string) {
+    const previousDefault = defaultBusinessType(industry);
+    setIndustry(next);
+    if (!businessType.trim() || businessType.trim() === previousDefault) {
+      setBusinessType(defaultBusinessType(next));
+    }
+  }
+
   async function handleSearch() {
     setSearching(true);
     try {
@@ -114,10 +135,21 @@ function LeadEngine() {
     setOpenProspect(p);
     setSelectedEmail(null);
     if (enrichments[p.id] || !p.domain) return;
+
+    // Never spend a Hunter credit on a domain we've already enriched.
+    const cached = getCachedEnrichment(p.domain);
+    if (cached) {
+      setEnrichments((prev) => ({ ...prev, [p.id]: cached }));
+      toast.info("Loaded saved enrichment — no Hunter credit used.");
+      return;
+    }
+
     setEnrichingId(p.id);
     try {
       const result = await runEnrich({ data: { domain: p.domain } });
       setEnrichments((prev) => ({ ...prev, [p.id]: result }));
+      saveEnrichment(p.domain, result);
+      setCachedSet(loadCachedDomains());
       if (result.error) toast.error(result.error);
       else if (result.contacts.length === 0) toast.info("No contacts found for this domain.");
     } catch (err) {
@@ -126,6 +158,7 @@ function LeadEngine() {
       setEnrichingId(null);
     }
   }
+
 
   const openResult = openProspect ? enrichments[openProspect.id] : undefined;
   const ranked = openResult ? rankAllMatches(openResult.contacts, industry) : [];
@@ -211,109 +244,125 @@ function LeadEngine() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-baseline justify-between px-6 py-6">
-          <div className="flex items-baseline gap-3">
-            <span className="headline text-lg text-foreground">WaveClimate</span>
-            <span className="eyebrow">Lead Engine</span>
-          </div>
-          <nav className="flex items-center gap-5 text-sm">
-            <Link to="/" className="font-medium text-foreground">
-              Lead Engine
-            </Link>
-            <Link to="/pipeline" className="text-muted-foreground transition-colors hover:text-foreground">
-              Pipeline
-            </Link>
-          </nav>
-        </div>
-      </header>
-
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <h1 className="headline max-w-xl text-3xl text-foreground">
-          Find commercial accounts in deregulated markets.
-        </h1>
-        <div className="mt-12 grid grid-cols-2 gap-x-10 gap-y-10 md:grid-cols-4">
-          <StatBlock value={prospects.length} label="Prospects found" />
-          <StatBlock value={contactsCount} label="Contacts enriched" />
-          <StatBlock value={matchedCount} label="Decision-makers matched" />
-          <StatBlock value={sentCount} label="Sent to outreach" accent />
-        </div>
-      </section>
-
-      <section className="border-t border-border bg-surface">
-        <div className="mx-auto max-w-6xl px-6 py-12">
-          <div className="eyebrow">Step 1 — Prospect search</div>
-          <div className="mt-6 grid gap-6 md:grid-cols-4">
-            <div className="space-y-2">
-              <Label className="eyebrow">Industry</Label>
-              <Select value={industry} onValueChange={setIndustry}>
-                <SelectTrigger className="rounded-none">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {INDUSTRY_OPTIONS.map((o) => (
-                    <SelectItem key={o.key} value={o.key}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+    <main className="relative min-h-screen bg-background">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 opacity-[0.22] [background:radial-gradient(60rem_40rem_at_15%_-10%,oklch(0.62_0.24_300),transparent_60%),radial-gradient(50rem_36rem_at_95%_10%,oklch(0.66_0.26_340),transparent_60%),radial-gradient(40rem_30rem_at_60%_110%,oklch(0.82_0.15_55),transparent_60%)]"
+      />
+      <div className="relative">
+        <header className="border-b border-border">
+          <div className="mx-auto flex max-w-6xl items-baseline justify-between px-6 py-6">
+            <div className="flex items-baseline gap-3">
+              <span className="headline text-lg text-foreground">WaveClimate</span>
+              <span className="eyebrow">Lead Engine</span>
             </div>
-            <div className="space-y-2">
-              <Label className="eyebrow">Business type</Label>
-              <Input
-                className="rounded-none"
-                value={businessType}
-                onChange={(e) => setBusinessType(e.target.value)}
-                placeholder="cold storage warehouse"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="eyebrow">Area</Label>
-              <Input
-                className="rounded-none"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Dallas, TX"
-              />
-              <div className="text-xs text-muted-foreground">
-                Deregulated: {DEREGULATED_STATES.map((m) => m.code).join(", ")}
-              </div>
-            </div>
-            <div className="flex flex-col justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <Switch checked={deregulatedOnly} onCheckedChange={setDeregulatedOnly} />
-                <span className="text-sm text-foreground">Deregulated only</span>
-              </div>
-              <Button
-                className="rounded-none"
-                onClick={handleSearch}
-                disabled={searching || !businessType || !location}
+            <nav className="flex items-center gap-5 text-sm">
+              <Link to="/" className="font-medium text-foreground">
+                Lead Engine
+              </Link>
+              <Link
+                to="/pipeline"
+                className="text-muted-foreground transition-colors hover:text-foreground"
               >
-                {searching ? "Searching…" : "Search"}
-              </Button>
+                Pipeline
+              </Link>
+            </nav>
+          </div>
+        </header>
+
+        <section className="mx-auto max-w-6xl px-6 py-16">
+          <h1 className="headline max-w-2xl text-4xl leading-tight text-foreground">
+            Find commercial accounts in <span className="grad-text">deregulated markets</span>.
+          </h1>
+          <div className="mt-12 grid grid-cols-2 gap-5 md:grid-cols-4">
+            <StatBlock value={prospects.length} label="Prospects found" />
+            <StatBlock value={contactsCount} label="Contacts enriched" />
+            <StatBlock value={matchedCount} label="Decision-makers matched" />
+            <StatBlock value={sentCount} label="Sent to outreach" accent />
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-6 pb-20">
+          <div className="glass-panel rounded-2xl p-8">
+            <div className="eyebrow">Step 1 — Prospect search</div>
+            <div className="mt-6 grid gap-6 md:grid-cols-4">
+              <div className="space-y-2">
+                <Label className="eyebrow">Industry</Label>
+                <Select value={industry} onValueChange={handleIndustryChange}>
+                  <SelectTrigger className="rounded-lg bg-white/[0.04]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INDUSTRY_OPTIONS.map((o) => (
+                      <SelectItem key={o.key} value={o.key}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-muted-foreground">Sets the title-tier waterfall.</div>
+              </div>
+              <div className="space-y-2">
+                <Label className="eyebrow">Business type</Label>
+                <Input
+                  className="rounded-lg bg-white/[0.04]"
+                  value={businessType}
+                  onChange={(e) => setBusinessType(e.target.value)}
+                  placeholder="cold storage warehouse"
+                />
+                <div className="text-xs text-muted-foreground">
+                  Search keyword — suggested from industry, editable.
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="eyebrow">Area</Label>
+                <Input
+                  className="rounded-lg bg-white/[0.04]"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Dallas, TX"
+                />
+                <div className="text-xs text-muted-foreground">
+                  Deregulated: {DEREGULATED_STATES.map((m) => m.code).join(", ")}
+                </div>
+              </div>
+              <div className="flex flex-col justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Switch checked={deregulatedOnly} onCheckedChange={setDeregulatedOnly} />
+                  <span className="text-sm text-foreground">Deregulated only</span>
+                </div>
+                <Button
+                  className="grad-fill rounded-full border-0 text-white hover:opacity-90"
+                  onClick={handleSearch}
+                  disabled={searching || !businessType || !location}
+                >
+                  {searching ? "Searching…" : "Search"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-10">
+              {visible.length > 0 ? (
+                <ProspectTable
+                  prospects={visible}
+                  onEnrich={handleEnrich}
+                  enrichingId={enrichingId}
+                  enrichedIds={enrichedIds}
+                  cachedDomains={cachedSet}
+                />
+              ) : (
+                <p className="rounded-xl border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">
+                  {prospects.length === 0
+                    ? "Run a search to load prospects."
+                    : "No deregulated results. Turn off the filter to see everything."}
+                </p>
+              )}
             </div>
           </div>
+        </section>
+      </div>
 
-          <div className="mt-10">
-            {visible.length > 0 ? (
-              <ProspectTable
-                prospects={visible}
-                onEnrich={handleEnrich}
-                enrichingId={enrichingId}
-                enrichedIds={enrichedIds}
-              />
-            ) : (
-              <p className="border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">
-                {prospects.length === 0
-                  ? "Run a search to load prospects."
-                  : "No deregulated results. Turn off the filter to see everything."}
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
+
 
       <Sheet open={!!openProspect} onOpenChange={(o) => !o && setOpenProspect(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
