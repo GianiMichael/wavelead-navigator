@@ -362,9 +362,7 @@ function LeadEngine() {
         </section>
       </div>
 
-          </div>
-        </div>
-      </section>
+
 
       <Sheet open={!!openProspect} onOpenChange={(o) => !o && setOpenProspect(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
