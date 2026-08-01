@@ -71,6 +71,7 @@ function LeadEngine() {
 
   const [searching, setSearching] = useState(false);
   const [prospects, setProspects] = useState<Prospect[]>([]);
+  const [excludedNoWebsite, setExcludedNoWebsite] = useState(0);
   const [enrichments, setEnrichments] = useState<Record<string, EnrichmentResult>>({});
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
   const [openProspect, setOpenProspect] = useState<Prospect | null>(null);
@@ -119,10 +120,11 @@ function LeadEngine() {
   async function handleSearch() {
     setSearching(true);
     try {
-      const results = await runSearch({
+      const { prospects: results, excludedNoWebsite: skipped } = await runSearch({
         data: { query: businessType, location, maxResults: 20 },
       });
       setProspects(results);
+      setExcludedNoWebsite(skipped);
       if (results.length === 0) toast.info("No businesses matched that search.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Search failed.");
@@ -146,12 +148,13 @@ function LeadEngine() {
 
     setEnrichingId(p.id);
     try {
-      const result = await runEnrich({ data: { domain: p.domain } });
+      const result = await runEnrich({ data: { domain: p.domain, industry } });
       setEnrichments((prev) => ({ ...prev, [p.id]: result }));
       saveEnrichment(p.domain, result);
       setCachedSet(loadCachedDomains());
-      if (result.error) toast.error(result.error);
-      else if (result.contacts.length === 0) toast.info("No contacts found for this domain.");
+      if (result.contacts.length === 0)
+        toast.info("No contacts found across all providers.");
+      else if (result.error) toast.error(result.error);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Enrichment failed.");
     } finally {
@@ -341,7 +344,15 @@ function LeadEngine() {
               </div>
             </div>
 
-            <div className="mt-10">
+            {excludedNoWebsite > 0 && (
+              <p className="mt-8 text-xs text-muted-foreground">
+                {excludedNoWebsite} business{excludedNoWebsite === 1 ? " was" : "es were"} without a
+                website {excludedNoWebsite === 1 ? "was" : "were"} excluded — they can&apos;t be
+                enriched by any domain-based provider.
+              </p>
+            )}
+
+            <div className="mt-6">
               {visible.length > 0 ? (
                 <ProspectTable
                   prospects={visible}
@@ -374,7 +385,7 @@ function LeadEngine() {
               <div className="eyebrow">Step 2 — Decision-maker enrichment</div>
               <p className="mt-2 text-sm text-muted-foreground">
                 {openProspect?.domain
-                  ? `Hunter domain search · ${openProspect.domain}`
+                  ? `Waterfall: Hunter → Prospeo → Snov.io · ${openProspect.domain}`
                   : "No website on file — enrichment unavailable."}
               </p>
             </div>
@@ -384,9 +395,19 @@ function LeadEngine() {
             {openResult && (
               <div>
                 <div className="eyebrow">Step 3 — Tier matching</div>
+                {openResult.contacts.length > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Supplied by {openResult.provider}
+                    {openResult.attempted && openResult.attempted.length > 1
+                      ? ` · tried ${openResult.attempted.join(" → ")}`
+                      : ""}
+                  </p>
+                )}
                 <div className="mt-4 space-y-2">
                   {ranked.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No contacts returned.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No contacts found across all providers.
+                    </p>
                   )}
                   {ranked.length > 0 && topMatches.length === 0 && (
                     <p className="text-sm text-muted-foreground">
