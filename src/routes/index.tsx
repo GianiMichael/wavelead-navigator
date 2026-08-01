@@ -346,9 +346,9 @@ function LeadEngine() {
 
             {excludedNoWebsite > 0 && (
               <p className="mt-8 text-xs text-muted-foreground">
-                {excludedNoWebsite} business{excludedNoWebsite === 1 ? " was" : "es were"} without a
-                website {excludedNoWebsite === 1 ? "was" : "were"} excluded — they can&apos;t be
-                enriched by any domain-based provider.
+                {excludedNoWebsite} business{excludedNoWebsite === 1 ? "" : "es"} without a website{" "}
+                {excludedNoWebsite === 1 ? "was" : "were"} excluded — they can&apos;t be enriched by
+                any domain-based provider.
               </p>
             )}
 
