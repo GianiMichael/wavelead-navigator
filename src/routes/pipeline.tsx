@@ -14,6 +14,8 @@ import {
   type PipelineRecord,
 } from "@/lib/pipeline-store";
 import { INDUSTRY_OPTIONS } from "@/lib/tier-matching";
+import { getCachedEnrichment } from "@/lib/enrichment-cache";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/pipeline")({
   head: () => ({
@@ -64,6 +66,7 @@ function PipelinePage() {
   const [tierFilter, setTierFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortDesc, setSortDesc] = useState(true);
+  const [nameQuery, setNameQuery] = useState("");
 
   async function sync(current: PipelineRecord[], silent = false) {
     const ids = current.map((r) => r.leadId).filter(Boolean);
@@ -111,8 +114,10 @@ function PipelinePage() {
   const maxIndustry = byIndustry[0]?.[1] ?? 1;
 
   const filtered = useMemo(() => {
+    const q = nameQuery.trim().toLowerCase();
     const rows = records.filter(
       (r) =>
+        (q === "" || r.businessName.toLowerCase().includes(q)) &&
         (industryFilter === "all" || r.industry === industryFilter) &&
         (tierFilter === "all" || r.tier === tierFilter) &&
         (statusFilter === "all" || r.status === statusFilter),
@@ -122,7 +127,27 @@ function PipelinePage() {
         ? b.dateAdded.localeCompare(a.dateAdded)
         : a.dateAdded.localeCompare(b.dateAdded),
     );
-  }, [records, industryFilter, tierFilter, statusFilter, sortDesc]);
+  }, [records, industryFilter, tierFilter, statusFilter, sortDesc, nameQuery]);
+
+  /**
+   * Company lookup — pulls the full cached contact list for a saved company so
+   * a different decision-maker can be picked without re-spending credits.
+   */
+  const lookup = useMemo(() => {
+    const q = nameQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const seen = new Set<string>();
+    const out: { name: string; domain: string; contacts: { name: string; title: string; email: string }[] }[] = [];
+    for (const r of records) {
+      if (!r.businessName.toLowerCase().includes(q)) continue;
+      const domain = (r.domain ?? "").toLowerCase().replace(/^www\./, "");
+      if (!domain || seen.has(domain)) continue;
+      seen.add(domain);
+      const cached = getCachedEnrichment(domain);
+      out.push({ name: r.businessName, domain, contacts: cached?.contacts ?? [] });
+    }
+    return out;
+  }, [records, nameQuery]);
 
   function chip(active: boolean) {
     return `rounded-full border px-3 py-1 text-xs transition-all duration-200 ${
@@ -230,6 +255,43 @@ function PipelinePage() {
           </div>
 
           <div className="glass-panel mt-8 rounded-2xl p-6">
+            <div className="mb-6">
+              <span className="eyebrow" style={{ color: "var(--cc-muted)" }}>
+                Company lookup
+              </span>
+              <Input
+                value={nameQuery}
+                onChange={(e) => setNameQuery(e.target.value)}
+                placeholder="Search a company by name…"
+                className="mt-2 max-w-sm rounded-lg border-white/15 bg-white/5 text-white placeholder:text-white/35"
+              />
+              {lookup.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  {lookup.map((c) => (
+                    <div key={c.domain} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                      <div className="text-sm text-white/90">
+                        {c.name} <span className="text-xs text-white/40">{c.domain}</span>
+                      </div>
+                      {c.contacts.length === 0 ? (
+                        <p className="mt-2 text-xs text-white/45">
+                          No cached contacts saved for this company.
+                        </p>
+                      ) : (
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {c.contacts.map((p) => (
+                            <div key={p.email} className="text-xs text-white/70">
+                              <div className="text-white/90">{p.name || p.email}</div>
+                              <div className="text-white/45">{p.title || "Title unknown"}</div>
+                              <div className="text-white/55">{p.email}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-6">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="eyebrow" style={{ color: "var(--cc-muted)" }}>

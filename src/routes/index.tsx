@@ -21,7 +21,7 @@ import { ProspectTable } from "@/components/ProspectTable";
 import { INDUSTRY_OPTIONS, rankAllMatches, matchDecisionMaker } from "@/lib/tier-matching";
 import { MARKETS } from "@/data/deregulated-markets";
 import { energyPriorityForIndustry } from "@/lib/energy-priority";
-import { addPipelineRecord } from "@/lib/pipeline-store";
+import { addPipelineRecord, contactedDomains } from "@/lib/pipeline-store";
 import { defaultBusinessType } from "@/lib/industry-defaults";
 import {
   cachedDomains as loadCachedDomains,
@@ -81,9 +81,15 @@ function LeadEngine() {
   const [sending, setSending] = useState(false);
   const [sentCount, setSentCount] = useState(0);
   const [cachedSet, setCachedSet] = useState<Set<string>>(new Set());
+  const [contactedSet, setContactedSet] = useState<Set<string>>(new Set());
+  const [showContacted, setShowContacted] = useState(false);
+  const [nextPageToken, setNextPageToken] = useState<string | undefined>(undefined);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [exhausted, setExhausted] = useState(false);
 
   useEffect(() => {
     setCachedSet(loadCachedDomains());
+    setContactedSet(contactedDomains());
   }, []);
 
   const campaigns = useQuery({
@@ -92,10 +98,25 @@ function LeadEngine() {
     retry: false,
   });
 
-  const visible = useMemo(
-    () => (deregulatedOnly ? prospects.filter((p) => p.marketStatus === "deregulated") : prospects),
-    [prospects, deregulatedOnly],
+  const hiddenContacted = useMemo(
+    () =>
+      prospects.filter(
+        (p) => p.domain && contactedSet.has(p.domain.toLowerCase().replace(/^www\./, "")),
+      ).length,
+    [prospects, contactedSet],
   );
+
+  const visible = useMemo(() => {
+    let rows = deregulatedOnly
+      ? prospects.filter((p) => p.marketStatus === "deregulated")
+      : prospects;
+    if (!showContacted) {
+      rows = rows.filter(
+        (p) => !p.domain || !contactedSet.has(p.domain.toLowerCase().replace(/^www\./, "")),
+      );
+    }
+    return rows;
+  }, [prospects, deregulatedOnly, showContacted, contactedSet]);
 
   const enrichedIds = useMemo(() => new Set(Object.keys(enrichments)), [enrichments]);
   const contactsCount = useMemo(
@@ -119,17 +140,41 @@ function LeadEngine() {
 
   async function handleSearch() {
     setSearching(true);
+    setExhausted(false);
     try {
-      const { prospects: results, excludedNoWebsite: skipped } = await runSearch({
+      const res = await runSearch({
         data: { query: businessType, location, maxResults: 20 },
       });
-      setProspects(results);
-      setExcludedNoWebsite(skipped);
-      if (results.length === 0) toast.info("No businesses matched that search.");
+      setProspects(res.prospects);
+      setExcludedNoWebsite(res.excludedNoWebsite);
+      setNextPageToken(res.nextPageToken);
+      if (res.prospects.length === 0) toast.info("No businesses matched that search.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Search failed.");
     } finally {
       setSearching(false);
+    }
+  }
+
+  /** Google Places caps a text search at ~60 results across 3 pages. */
+  async function handleLoadMore() {
+    if (!nextPageToken) return;
+    setLoadingMore(true);
+    try {
+      const res = await runSearch({
+        data: { query: businessType, location, maxResults: 20, pageToken: nextPageToken },
+      });
+      setProspects((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...res.prospects.filter((p) => !seen.has(p.id))];
+      });
+      setExcludedNoWebsite((n) => n + res.excludedNoWebsite);
+      setNextPageToken(res.nextPageToken);
+      if (!res.nextPageToken) setExhausted(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not load more results.");
+    } finally {
+      setLoadingMore(false);
     }
   }
 
@@ -221,6 +266,7 @@ function LeadEngine() {
         contactName: activeMatch.contact.name,
         title: activeMatch.contact.title,
         email: activeMatch.contact.email,
+        domain: openProspect.domain,
         tier:
           activeMatch.tier === "Unmatched"
             ? "Unmatched"
@@ -238,6 +284,7 @@ function LeadEngine() {
         status: "Pending",
       });
       setSentCount((n) => n + 1);
+      setContactedSet(contactedDomains());
       toast.success(`${activeMatch.contact.email} added to campaign.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not add contact to campaign.");
@@ -330,9 +377,15 @@ function LeadEngine() {
                 </div>
               </div>
               <div className="flex flex-col justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <Switch checked={deregulatedOnly} onCheckedChange={setDeregulatedOnly} />
-                  <span className="text-sm text-foreground">Deregulated only</span>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Switch checked={deregulatedOnly} onCheckedChange={setDeregulatedOnly} />
+                    <span className="text-sm text-foreground">Deregulated only</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Switch checked={showContacted} onCheckedChange={setShowContacted} />
+                    <span className="text-sm text-foreground">Show already-contacted</span>
+                  </div>
                 </div>
                 <Button
                   className="grad-fill rounded-full border-0 text-white hover:opacity-90"
@@ -343,6 +396,14 @@ function LeadEngine() {
                 </Button>
               </div>
             </div>
+
+            {!showContacted && hiddenContacted > 0 && (
+              <p className="mt-8 text-xs text-muted-foreground">
+                {hiddenContacted} compan{hiddenContacted === 1 ? "y" : "ies"} already in outreach{" "}
+                {hiddenContacted === 1 ? "was" : "were"} hidden — flip &ldquo;Show
+                already-contacted&rdquo; to see them.
+              </p>
+            )}
 
             {excludedNoWebsite > 0 && (
               <p className="mt-8 text-xs text-muted-foreground">
@@ -369,6 +430,27 @@ function LeadEngine() {
                 </p>
               )}
             </div>
+
+            {prospects.length > 0 && (
+              <div className="mt-6 flex flex-col items-center gap-3">
+                {nextPageToken && !exhausted ? (
+                  <Button
+                    variant="outline"
+                    className="rounded-full"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? "Loading…" : "Load more results"}
+                  </Button>
+                ) : (
+                  <p className="max-w-lg text-center text-xs text-muted-foreground">
+                    That&apos;s all the results Google Places returns for this search. Try a
+                    different keyword (e.g. &ldquo;auto wash&rdquo; instead of &ldquo;car
+                    wash&rdquo;) or narrow the area to find more.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </section>
       </div>

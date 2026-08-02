@@ -12,6 +12,7 @@ export const searchProspects = createServerFn({ method: "POST" })
         query: z.string().min(2).max(120),
         location: z.string().min(2).max(120),
         maxResults: z.number().int().min(1).max(20).default(20),
+        pageToken: z.string().max(2000).optional(),
       })
       .parse(data),
   )

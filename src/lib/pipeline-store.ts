@@ -31,6 +31,8 @@ export interface PipelineRecord {
   contactName: string;
   title: string;
   email: string;
+  /** Company domain — used to hide already-contacted businesses from search. */
+  domain?: string;
   tier: string;
   industry: string;
   industryLabel: string;
@@ -84,5 +86,14 @@ export function applyStatusUpdates(
 ): PipelineRecord[] {
   return records.map((r) =>
     updates[r.leadId] ? { ...r, status: updates[r.leadId], lastSynced: syncedAt } : r,
+  );
+}
+
+/** Normalized domains of companies that already have a lead in a campaign. */
+export function contactedDomains(records = loadPipeline()): Set<string> {
+  return new Set(
+    records
+      .map((r) => (r.domain ?? "").trim().toLowerCase().replace(/^www\./, ""))
+      .filter(Boolean),
   );
 }

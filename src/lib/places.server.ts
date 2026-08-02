@@ -26,6 +26,7 @@ export async function searchPlaces(params: {
   query: string;
   location: string;
   maxResults: number;
+  pageToken?: string;
 }): Promise<ProspectSearchResult> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error("Google Places API key is not configured.");
@@ -37,12 +38,13 @@ export async function searchPlaces(params: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
       "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.primaryTypeDisplayName,places.types,places.websiteUri,places.nationalPhoneNumber,places.rating",
+        "nextPageToken,places.id,places.displayName,places.formattedAddress,places.primaryTypeDisplayName,places.types,places.websiteUri,places.nationalPhoneNumber,places.rating",
     },
     body: JSON.stringify({
       textQuery,
       maxResultCount: Math.min(params.maxResults, 20),
       regionCode: "US",
+      ...(params.pageToken ? { pageToken: params.pageToken } : {}),
     }),
   });
 
@@ -51,7 +53,7 @@ export async function searchPlaces(params: {
     throw new Error(`Google Places request failed [${res.status}]: ${body}`);
   }
 
-  const json = (await res.json()) as { places?: PlacesPlace[] };
+  const json = (await res.json()) as { places?: PlacesPlace[]; nextPageToken?: string };
   const places = json.places ?? [];
   // Domain-based enrichment (Hunter/Prospeo/Snov) is impossible without a
   // website, so drop those results here and report how many were dropped.
@@ -89,5 +91,5 @@ export async function searchPlaces(params: {
     };
   });
 
-  return { prospects, excludedNoWebsite };
+  return { prospects, excludedNoWebsite, nextPageToken: json.nextPageToken };
 }
