@@ -42,6 +42,8 @@ export interface ProspectSearchResult {
   prospects: Prospect[];
   /** Places results dropped because they had no website (undomainable). */
   excludedNoWebsite: number;
+  /** Token for the next Google Places page; absent when there are no more. */
+  nextPageToken?: string;
 }
 
 export interface InstantlyCampaign {
