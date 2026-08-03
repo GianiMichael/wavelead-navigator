@@ -84,7 +84,7 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
   useEffect(() => {
     // Demo Mode never touches the shared cloud tables or real saved data.
     if (demo) {
-      setProspects(DEMO_PROSPECTS);
+      setProspects(buildDemoProspects(industry, location));
       return;
     }
     // Pull the shared cloud copy first (so the published site and the editor
