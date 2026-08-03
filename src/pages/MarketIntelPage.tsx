@@ -259,15 +259,22 @@ function hourLabel(period: string) {
   const m = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
   if (!m) return period;
   const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4])));
-  return d.toLocaleTimeString("en-US", { hour: "numeric" });
+  // Pinned to UTC so server-rendered and client-rendered labels always match.
+  return d.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "UTC" });
 }
 
 function hourStamp(period: string) {
   const m = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
   if (!m) return period;
   const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4])));
-  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric" });
+  return `${d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    timeZone: "UTC",
+  })} UTC`;
 }
+
 
 function GridDemandWidget({
   grid,
