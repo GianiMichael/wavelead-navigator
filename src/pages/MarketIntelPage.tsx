@@ -578,7 +578,41 @@ function IsoWholesalePanel() {
                 {r.priceCentsKwh !== null ? `${r.priceCentsKwh.toFixed(2)}¢/kWh · ` : ""}
                 {r.states.join(", ")}
               </div>
+              {(r.rtPriceMwh !== null || r.loadMw !== null) && (
+                <div
+                  className="mt-2 space-y-1 border-t border-white/10 pt-2 text-[11px]"
+                  style={{ color: "var(--cc-muted)" }}
+                >
+                  {r.rtPriceMwh !== null && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span>Real-time: ${r.rtPriceMwh.toFixed(2)}</span>
+                      {r.spreadPct !== null && (
+                        <span
+                          className={`rounded px-1.5 py-0.5 tabular-nums ${
+                            Math.abs(r.spreadPct) >= 20
+                              ? "bg-amber-400/15 text-amber-200"
+                              : "bg-white/10 text-white/70"
+                          }`}
+                          title={
+                            Math.abs(r.spreadPct) >= 20
+                              ? "Wide spread — this market is currently less predictable than usual"
+                              : "Real-time vs day-ahead spread"
+                          }
+                        >
+                          {Math.abs(r.spreadPct) >= 20 ? "⚠ " : ""}
+                          {r.spreadPct > 0 ? "+" : ""}
+                          {r.spreadPct.toFixed(0)}% spread
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {r.loadMw !== null && (
+                    <div>Load: {r.loadMw.toLocaleString("en-US")} MW</div>
+                  )}
+                </div>
+              )}
             </button>
+
           );
         })}
         {!isPending && regions.length === 0 && (
