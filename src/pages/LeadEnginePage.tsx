@@ -37,7 +37,12 @@ import {
 } from "@/lib/enrichment-cache";
 
 import type { EnrichmentResult, Prospect } from "@/lib/types";
-import { DEMO_CAMPAIGNS, DEMO_ENRICHMENTS, DEMO_PROSPECTS } from "@/data/demo-data";
+import {
+  DEMO_CAMPAIGNS,
+  DEMO_PAGE_SIZE,
+  buildDemoEnrichment,
+  buildDemoProspects,
+} from "@/data/demo-data";
 import {
   searchProspects,
   enrichCompany,
