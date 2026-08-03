@@ -569,7 +569,7 @@ function IsoWholesalePanel() {
                       className="ml-1 text-xs font-normal"
                       style={{ color: "var(--cc-muted)" }}
                     >
-                      /MWh
+                      /MWh day-ahead
                     </span>
                   </>
                 )}
@@ -637,6 +637,28 @@ function IsoWholesalePanel() {
               <dd className="text-white/85">{stamp(active.intervalStart)}</dd>
             </div>
 
+            <div className="flex justify-between gap-3">
+              <dt>Real-time avg (same window)</dt>
+              <dd className="text-white/85">
+                {active.rtPriceMwh === null ? "—" : `$${active.rtPriceMwh.toFixed(2)}/MWh`}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>DA vs RT spread</dt>
+              <dd className="text-white/85">
+                {active.spreadPct === null
+                  ? "—"
+                  : `${active.spreadPct > 0 ? "+" : ""}${active.spreadPct.toFixed(1)}%`}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Regional load</dt>
+              <dd className="text-white/85">
+                {active.loadMw === null
+                  ? "—"
+                  : `${active.loadMw.toLocaleString("en-US")} MW · ${stamp(active.loadAt)}`}
+              </dd>
+            </div>
             <div className="flex justify-between gap-3">
               <dt>Cached at</dt>
               <dd className="text-white/85">{stamp(active.fetchedAt)}</dd>
