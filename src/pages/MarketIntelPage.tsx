@@ -569,7 +569,7 @@ function IsoWholesalePanel() {
                       className="ml-1 text-xs font-normal"
                       style={{ color: "var(--cc-muted)" }}
                     >
-                      /MWh
+                      /MWh day-ahead
                     </span>
                   </>
                 )}
@@ -578,7 +578,41 @@ function IsoWholesalePanel() {
                 {r.priceCentsKwh !== null ? `${r.priceCentsKwh.toFixed(2)}¢/kWh · ` : ""}
                 {r.states.join(", ")}
               </div>
+              {(r.rtPriceMwh !== null || r.loadMw !== null) && (
+                <div
+                  className="mt-2 space-y-1 border-t border-white/10 pt-2 text-[11px]"
+                  style={{ color: "var(--cc-muted)" }}
+                >
+                  {r.rtPriceMwh !== null && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span>Real-time: ${r.rtPriceMwh.toFixed(2)}</span>
+                      {r.spreadPct !== null && (
+                        <span
+                          className={`rounded px-1.5 py-0.5 tabular-nums ${
+                            Math.abs(r.spreadPct) >= 20
+                              ? "bg-amber-400/15 text-amber-200"
+                              : "bg-white/10 text-white/70"
+                          }`}
+                          title={
+                            Math.abs(r.spreadPct) >= 20
+                              ? "Wide spread — this market is currently less predictable than usual"
+                              : "Real-time vs day-ahead spread"
+                          }
+                        >
+                          {Math.abs(r.spreadPct) >= 20 ? "⚠ " : ""}
+                          {r.spreadPct > 0 ? "+" : ""}
+                          {r.spreadPct.toFixed(0)}% spread
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {r.loadMw !== null && (
+                    <div>Load: {r.loadMw.toLocaleString("en-US")} MW</div>
+                  )}
+                </div>
+              )}
             </button>
+
           );
         })}
         {!isPending && regions.length === 0 && (
@@ -604,6 +638,28 @@ function IsoWholesalePanel() {
             </div>
 
             <div className="flex justify-between gap-3">
+              <dt>Real-time avg (same window)</dt>
+              <dd className="text-white/85">
+                {active.rtPriceMwh === null ? "—" : `$${active.rtPriceMwh.toFixed(2)}/MWh`}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>DA vs RT spread</dt>
+              <dd className="text-white/85">
+                {active.spreadPct === null
+                  ? "—"
+                  : `${active.spreadPct > 0 ? "+" : ""}${active.spreadPct.toFixed(1)}%`}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Regional load</dt>
+              <dd className="text-white/85">
+                {active.loadMw === null
+                  ? "—"
+                  : `${active.loadMw.toLocaleString("en-US")} MW · ${stamp(active.loadAt)}`}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
               <dt>Cached at</dt>
               <dd className="text-white/85">{stamp(active.fetchedAt)}</dd>
             </div>
@@ -617,9 +673,11 @@ function IsoWholesalePanel() {
       )}
 
       <p className="mt-3 text-[11px]" style={{ color: "var(--cc-muted)" }}>
-        Source: GridStatus.io real-time ISO/RTO locational prices · cached once daily and shared
-        across all visitors · last refresh {stamp(data?.lastUpdated ?? null)}.
+        Source: GridStatus.io — day-ahead hourly hub prices, real-time comparison, and ISO load ·
+        cached on a shared schedule for all visitors · last refresh{" "}
+        {stamp(data?.lastUpdated ?? null)}.
       </p>
+
     </div>
   );
 }

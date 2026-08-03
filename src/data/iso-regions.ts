@@ -4,8 +4,12 @@
 export interface IsoRegion {
   code: string;
   name: string;
-  /** GridStatus.io dataset id. */
+  /** GridStatus.io day-ahead hourly dataset id (primary displayed price). */
   dataset: string;
+  /** Real-time price dataset id, used for the day-ahead vs real-time spread. */
+  rtDataset: string;
+  /** Regional load dataset id (current demand in MW). */
+  loadDataset: string;
   /** Trading hub used as the representative price for the region. */
   hub: string;
   /** Human label for the hub. */
@@ -21,6 +25,8 @@ export const ISO_REGIONS: IsoRegion[] = [
     code: "ERCOT",
     name: "ERCOT (Texas)",
     dataset: "ercot_spp_day_ahead_hourly",
+    rtDataset: "ercot_spp_real_time_15_min",
+    loadDataset: "ercot_load",
     hub: "HB_HOUSTON",
     hubLabel: "Houston Hub",
     priceColumn: "spp",
@@ -30,6 +36,8 @@ export const ISO_REGIONS: IsoRegion[] = [
     code: "PJM",
     name: "PJM (Mid-Atlantic)",
     dataset: "pjm_lmp_day_ahead_hourly",
+    rtDataset: "pjm_lmp_real_time_5_min",
+    loadDataset: "pjm_load",
     hub: "WESTERN HUB",
     hubLabel: "Western Hub",
     priceColumn: "lmp",
@@ -39,6 +47,8 @@ export const ISO_REGIONS: IsoRegion[] = [
     code: "NYISO",
     name: "NYISO (New York)",
     dataset: "nyiso_lmp_day_ahead_hourly",
+    rtDataset: "nyiso_lmp_real_time_5_min",
+    loadDataset: "nyiso_load",
     hub: "N.Y.C.",
     hubLabel: "N.Y.C. Zone",
     priceColumn: "lmp",
@@ -48,6 +58,8 @@ export const ISO_REGIONS: IsoRegion[] = [
     code: "ISONE",
     name: "ISO-NE (New England)",
     dataset: "isone_lmp_day_ahead_hourly",
+    rtDataset: "isone_lmp_real_time_5_min",
+    loadDataset: "isone_load",
     hub: ".H.INTERNAL_HUB",
     hubLabel: "Internal Hub",
     priceColumn: "lmp",
@@ -57,6 +69,8 @@ export const ISO_REGIONS: IsoRegion[] = [
     code: "CAISO",
     name: "CAISO (California)",
     dataset: "caiso_lmp_day_ahead_hourly",
+    rtDataset: "caiso_lmp_real_time_5_min",
+    loadDataset: "caiso_load",
     hub: "TH_SP15_GEN-APND",
     hubLabel: "SP15 Hub",
     priceColumn: "lmp",
@@ -66,6 +80,8 @@ export const ISO_REGIONS: IsoRegion[] = [
     code: "MISO",
     name: "MISO (Midwest)",
     dataset: "miso_lmp_day_ahead_hourly",
+    rtDataset: "miso_lmp_real_time_5_min",
+    loadDataset: "miso_load",
     hub: "INDIANA.HUB",
     hubLabel: "Indiana Hub",
     priceColumn: "lmp",
