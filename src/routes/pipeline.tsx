@@ -181,6 +181,12 @@ function PipelinePage() {
               <Link to="/pipeline" className="font-medium text-white">
                 Pipeline
               </Link>
+              <Link
+                to="/priority-targets"
+                className="text-white/60 transition-colors hover:text-white"
+              >
+                Priority Targets
+              </Link>
               <button
                 onClick={() => void sync(records)}
                 disabled={syncing}
