@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { DemoBadge } from "@/components/DemoBadge";
 import { StatBlock } from "@/components/StatBlock";
 import { ProspectTable } from "@/components/ProspectTable";
 import {
@@ -165,7 +166,6 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
       setNextPageToken(undefined);
       setExhausted(true);
       setSearching(false);
-      toast.info("Demo Mode — fictional prospects, no Places call made.");
       return;
     }
     try {
@@ -214,7 +214,6 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
       // Demo Mode: fabricated tier-matched contacts, no Hunter/Prospeo/Snov call.
       const sample = buildDemoEnrichment(p, industry);
       setEnrichments((prev) => ({ ...prev, [p.id]: sample }));
-      toast.info("Demo Mode — fictional contacts, no enrichment credit used.");
       return;
     }
 
@@ -285,9 +284,6 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
       setTimeout(() => {
         setSentCount((n) => n + 1);
         setSending(false);
-        toast.success(
-          `Demo Mode — ${activeMatch.contact.email} would be added to the campaign. No outreach sent.`,
-        );
       }, 400);
       return;
     }
@@ -351,6 +347,7 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
               <span className="eyebrow">Lead Engine</span>
             </div>
             <nav className="flex items-center gap-5 text-sm">
+              {demo && <DemoBadge />}
               <Link
                 to={demo ? "/demo/app" : "/app"}
                 className="font-medium text-foreground"
