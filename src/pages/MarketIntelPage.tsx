@@ -6,6 +6,7 @@ import { DemoBadge } from "@/components/DemoBadge";
 import { lookupMarket } from "@/data/deregulated-markets";
 import { CBECS_SOURCE, intensityForIndustry, rankedIntensity } from "@/data/energy-intensity";
 import { naicsForIndustry, CBP_VINTAGE } from "@/data/naics-map";
+import { steoRegionForState } from "@/data/steo-regions";
 import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
 
 import { getGridDemand, getMarketIntel } from "@/lib/market-intel.functions";
@@ -488,13 +489,22 @@ function RateHistoryChart({
   history,
   stateName,
   trendPct,
+  forecast,
+  forecastRegion,
+  forecastVintage,
 }: {
   history: { period: string; rateCents: number }[];
   stateName: string;
   trendPct?: number;
+  forecast?: { period: string; rateCents: number }[];
+  forecastRegion?: string;
+  forecastVintage?: string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   if (history.length < 2) return null;
+
+  const fc = forecast ?? [];
+  const points = [...history.map((p) => ({ ...p, kind: "hist" as const })), ...fc.map((p) => ({ ...p, kind: "fc" as const }))];
 
   const w = 520;
   const h = 220;
@@ -502,27 +512,64 @@ function RateHistoryChart({
   const plotW = w - pad.l - pad.r;
   const plotH = h - pad.t - pad.b;
 
-  const values = history.map((p) => p.rateCents);
+  const values = points.map((p) => p.rateCents);
   const min = Math.min(...values) * 0.97;
   const max = Math.max(...values) * 1.03;
-  const x = (i: number) => pad.l + (i / (history.length - 1)) * plotW;
+  const x = (i: number) => pad.l + (i / (points.length - 1)) * plotW;
   const y = (v: number) => pad.t + plotH - ((v - min) / (max - min || 1)) * plotH;
-  const path = history.map((p, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(p.rateCents)}`).join(" ");
+
+  const histPath = history.map((p, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(p.rateCents)}`).join(" ");
+  const lastHist = history[history.length - 1]!;
+  const fcPath =
+    fc.length > 0
+      ? [`M${x(history.length - 1)},${y(lastHist.rateCents)}`]
+          .concat(fc.map((p, i) => `L${x(history.length + i)},${y(p.rateCents)}`))
+          .join(" ")
+      : "";
 
   const dir =
     trendPct === undefined ? "flat" : trendPct > 0.005 ? "rising" : trendPct < -0.005 ? "falling" : "flat";
 
+  const lastFc = fc[fc.length - 1];
+  const fcDelta = lastFc ? (lastFc.rateCents - lastHist.rateCents) / (lastHist.rateCents || 1) : 0;
+  const fcSummary = lastFc
+    ? fcDelta > 0.015
+      ? `Forecast: rates expected to continue rising through ${monthLabel(lastFc.period)} (${(fcDelta * 100).toFixed(1)}%).`
+      : fcDelta < -0.015
+        ? `Forecast: rates expected to ease through ${monthLabel(lastFc.period)} (${(fcDelta * 100).toFixed(1)}%).`
+        : `Forecast: rates expected to stabilize through ${monthLabel(lastFc.period)}.`
+    : null;
+
   const ticks = 4;
-  const xLabelEvery = Math.max(1, Math.ceil(history.length / 6));
+  const xLabelEvery = Math.max(1, Math.ceil(points.length / 6));
+  const HIST_COLOR = "oklch(0.66 0.26 340)";
+  const FC_COLOR = "oklch(0.82 0.14 55)";
 
   return (
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="text-sm font-medium">{stateName} commercial electricity rate history</span>
         <span className="text-xs" style={{ color: "var(--cc-muted)" }}>
-          Trend {dir}
+          Historical trend {dir}
           {trendPct !== undefined ? ` (${(trendPct * 100).toFixed(1)}% vs. 3 months prior)` : ""}
         </span>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px]" style={{ color: "var(--cc-muted)" }}>
+        <span className="inline-flex items-center gap-1.5">
+          <svg width="20" height="6" aria-hidden>
+            <line x1="0" y1="3" x2="20" y2="3" stroke={HIST_COLOR} strokeWidth={2.5} />
+          </svg>
+          Historical
+        </span>
+        {fc.length > 0 && (
+          <span className="inline-flex items-center gap-1.5">
+            <svg width="20" height="6" aria-hidden>
+              <line x1="0" y1="3" x2="20" y2="3" stroke={FC_COLOR} strokeWidth={2.5} strokeDasharray="5 4" />
+            </svg>
+            Forecast (EIA STEO)
+          </span>
+        )}
       </div>
 
       <div className="relative mt-3">
@@ -547,15 +594,41 @@ function RateHistoryChart({
             ¢/kWh
           </text>
 
-          <path d={path} fill="none" stroke="oklch(0.66 0.26 340)" strokeWidth={2.5} />
+          {fc.length > 0 && (
+            <rect
+              x={x(history.length - 1)}
+              y={pad.t}
+              width={plotW - (x(history.length - 1) - pad.l)}
+              height={plotH}
+              fill="rgba(255,255,255,0.035)"
+            />
+          )}
 
-          {history.map((p, i) => (
-            <g key={p.period}>
-              <circle cx={x(i)} cy={y(p.rateCents)} r={hover === i ? 5 : 3} fill="oklch(0.66 0.26 340)" />
+          <path d={histPath} fill="none" stroke={HIST_COLOR} strokeWidth={2.5} />
+          {fcPath && (
+            <path
+              d={fcPath}
+              fill="none"
+              stroke={FC_COLOR}
+              strokeWidth={2.5}
+              strokeDasharray="6 5"
+              opacity={0.9}
+            />
+          )}
+
+          {points.map((p, i) => (
+            <g key={`${p.kind}-${p.period}`}>
+              <circle
+                cx={x(i)}
+                cy={y(p.rateCents)}
+                r={hover === i ? 5 : 3}
+                fill={p.kind === "hist" ? HIST_COLOR : FC_COLOR}
+                opacity={p.kind === "hist" ? 1 : 0.9}
+              />
               <rect
-                x={x(i) - plotW / (history.length * 2)}
+                x={x(i) - plotW / (points.length * 2)}
                 y={pad.t}
-                width={plotW / history.length}
+                width={plotW / points.length}
                 height={plotH}
                 fill="transparent"
                 onMouseEnter={() => setHover(i)}
@@ -585,30 +658,55 @@ function RateHistoryChart({
           </text>
         </svg>
 
-        {hover !== null && history[hover] && (
+        {hover !== null && points[hover] && (
           <div
             className="pointer-events-none absolute -top-1 rounded-lg border border-white/15 bg-black/85 px-2.5 py-1.5 text-[11px] backdrop-blur"
             style={{ left: `${(x(hover) / w) * 100}%`, transform: "translateX(-50%)" }}
           >
-            {monthLabel(history[hover]!.period)}: {history[hover]!.rateCents.toFixed(2)}¢/kWh
+            {monthLabel(points[hover]!.period)}: {points[hover]!.rateCents.toFixed(2)}¢/kWh
+            {points[hover]!.kind === "fc" ? " (forecast)" : ""}
           </div>
         )}
       </div>
+
+      {fcSummary && (
+        <p className="mt-3 text-xs" style={{ color: "var(--cc-muted)" }}>
+          {fcSummary}
+          <br />
+          STEO forecast as of {forecastVintage ? monthLabel(forecastVintage) : "latest release"}
+          {forecastRegion ? ` · ${forecastRegion} region` : ""}.
+        </p>
+      )}
     </div>
   );
 }
+
 
 /* ── Detail side panel ──────────────────────────────────────────── */
 
 function DetailPanel({
   row,
   rate,
+  steo,
   onClose,
 }: {
   row: ScoreResult;
   rate?: { stateName: string; trendPct?: number; history: { period: string; rateCents: number }[] };
+  steo?: {
+    regions: Record<string, { region: string; regionName: string; series: { period: string; rateCents: number }[] }>;
+    vintage: string;
+  };
   onClose: () => void;
 }) {
+  const region = steoRegionForState(row.state);
+  const forecast = useMemo(() => {
+    if (!rate || !region || !steo) return [];
+    const series = steo.regions[region.code]?.series ?? [];
+    const lastHist = rate.history[rate.history.length - 1]?.period ?? "";
+    return series.filter((p) => p.period > lastHist).slice(0, 6);
+  }, [rate, region, steo]);
+
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -682,7 +780,15 @@ function DetailPanel({
               history={rate.history}
               stateName={rate.stateName}
               {...(rate.trendPct !== undefined ? { trendPct: rate.trendPct } : {})}
+              {...(forecast.length > 0
+                ? {
+                    forecast,
+                    ...(region ? { forecastRegion: region.name } : {}),
+                    ...(steo?.vintage ? { forecastVintage: steo.vintage } : {}),
+                  }
+                : {})}
             />
+
           ) : (
             <p className="text-sm" style={{ color: "var(--cc-muted)" }}>
               No rate history available for {row.stateName}.
@@ -1033,6 +1139,8 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
         <DetailPanel
           row={selected}
           {...(selectedRate ? { rate: selectedRate } : {})}
+          {...(data.steo ? { steo: data.steo } : {})}
+
           onClose={() => setSelected(null)}
         />
       )}

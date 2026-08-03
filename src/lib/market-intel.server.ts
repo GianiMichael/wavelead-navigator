@@ -1,3 +1,4 @@
+import { STEO_REGIONS } from "@/data/steo-regions";
 import { MARKETS } from "@/data/deregulated-markets";
 import { CBP_VINTAGE, NAICS_MAP, STATE_FIPS, naicsForIndustry } from "@/data/naics-map";
 
@@ -352,3 +353,86 @@ export async function fetchGridDemand(range: GridRange = "24H"): Promise<GridDem
   });
 }
 
+
+// ── EIA STEO commercial price forecast (by Census division) ───────────
+
+export interface SteoPoint {
+  /** YYYY-MM */
+  period: string;
+  /** cents per kWh */
+  rateCents: number;
+}
+
+export interface SteoRegionForecast {
+  region: string;
+  regionName: string;
+  series: SteoPoint[];
+}
+
+export interface SteoForecastResult {
+  /** Keyed by STEO region code (NEC, MAC, …). */
+  regions: Record<string, SteoRegionForecast>;
+  /** Approximate STEO release month, YYYY-MM. */
+  vintage: string;
+  fetchedAt: string;
+  error?: string;
+}
+
+/** Add `n` months to a YYYY-MM period key. */
+function shiftMonth(period: string, n: number): string {
+  const [y, m] = period.split("-").map(Number);
+  const d = new Date(Date.UTC(y ?? 2000, (m ?? 1) - 1 + n, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+export async function fetchSteoForecast(): Promise<SteoForecastResult> {
+  return cached<SteoForecastResult>("eia:steo-commercial-price", DAY, async () => {
+    const apiKey = process.env["EIA_API_KEY"];
+    const codes = Object.keys(STEO_REGIONS);
+    const base = { regions: {} as Record<string, SteoRegionForecast>, vintage: "", fetchedAt: new Date().toISOString() };
+    if (!apiKey) return { ...base, error: "EIA API key is not configured." } satisfies SteoForecastResult;
+
+    const params = new URLSearchParams();
+    params.set("api_key", apiKey);
+    params.set("frequency", "monthly");
+    params.append("data[0]", "value");
+    for (const c of codes) params.append("facets[seriesId][]", `ESCMU_${c}`);
+    params.append("sort[0][column]", "period");
+    params.append("sort[0][direction]", "desc");
+    // 30 months of history+forecast per region is plenty to stitch onto the chart.
+    params.set("length", String(codes.length * 30));
+
+    try {
+      const res = await fetch(`https://api.eia.gov/v2/steo/data/?${params.toString()}`);
+      if (!res.ok) throw new Error(`EIA STEO responded ${res.status}`);
+      const json = (await res.json()) as {
+        response?: { data?: { period: string; seriesId: string; value: string | number }[] };
+      };
+
+      const regions: Record<string, SteoRegionForecast> = {};
+      let maxPeriod = "";
+      for (const row of json.response?.data ?? []) {
+        const code = row.seriesId.replace("ESCMU_", "");
+        const meta = STEO_REGIONS[code];
+        if (!meta) continue;
+        const v = typeof row.value === "string" ? Number.parseFloat(row.value) : row.value;
+        if (!Number.isFinite(v)) continue;
+        const entry = (regions[code] ??= { region: code, regionName: meta.name, series: [] });
+        entry.series.push({ period: row.period, rateCents: v });
+        if (row.period > maxPeriod) maxPeriod = row.period;
+      }
+      for (const r of Object.values(regions)) {
+        r.series.sort((a, b) => a.period.localeCompare(b.period));
+      }
+
+      // STEO covers the release month plus 17 forward months.
+      const vintage = maxPeriod ? shiftMonth(maxPeriod, -17) : "";
+      return { regions, vintage, fetchedAt: new Date().toISOString() } satisfies SteoForecastResult;
+    } catch (e) {
+      return {
+        ...base,
+        error: e instanceof Error ? e.message : "EIA STEO request failed.",
+      } satisfies SteoForecastResult;
+    }
+  });
+}
