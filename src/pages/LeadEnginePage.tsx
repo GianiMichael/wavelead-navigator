@@ -37,6 +37,7 @@ import {
 } from "@/lib/enrichment-cache";
 
 import type { EnrichmentResult, Prospect } from "@/lib/types";
+import { DEMO_CAMPAIGNS, DEMO_ENRICHMENTS, DEMO_PROSPECTS } from "@/data/demo-data";
 import {
   searchProspects,
   enrichCompany,
@@ -47,7 +48,7 @@ import {
 
 const DEREGULATED_STATES = MARKETS.filter((m) => m.status === "deregulated");
 
-export function LeadEngine() {
+export function LeadEngine({ demo = false }: { demo?: boolean }) {
   const runSearch = useServerFn(searchProspects);
   const runEnrich = useServerFn(enrichCompany);
   const runSend = useServerFn(sendToCampaign);
@@ -76,6 +77,11 @@ export function LeadEngine() {
   const [exhausted, setExhausted] = useState(false);
 
   useEffect(() => {
+    // Demo Mode never touches the shared cloud tables or real saved data.
+    if (demo) {
+      setProspects(DEMO_PROSPECTS);
+      return;
+    }
     // Pull the shared cloud copy first (so the published site and the editor
     // see the same data), pushing up anything only stored locally.
     void (async () => {
@@ -87,12 +93,13 @@ export function LeadEngine() {
     })();
     setCachedSet(loadCachedDomains());
     setContactedSet(contactedDomains());
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo]);
 
 
   const campaigns = useQuery({
-    queryKey: ["instantly-campaigns"],
-    queryFn: () => getCampaigns(),
+    queryKey: ["instantly-campaigns", demo],
+    queryFn: () => (demo ? Promise.resolve(DEMO_CAMPAIGNS) : getCampaigns()),
     retry: false,
   });
 
@@ -139,6 +146,16 @@ export function LeadEngine() {
   async function handleSearch() {
     setSearching(true);
     setExhausted(false);
+    if (demo) {
+      // Demo Mode: serve the frozen sample set, never Google Places.
+      setProspects(DEMO_PROSPECTS);
+      setExcludedNoWebsite(0);
+      setNextPageToken(undefined);
+      setExhausted(true);
+      setSearching(false);
+      toast.info("Demo Mode — showing sample prospects, no Places call made.");
+      return;
+    }
     try {
       const res = await runSearch({
         data: { query: businessType, location, maxResults: 20 },
@@ -156,7 +173,7 @@ export function LeadEngine() {
 
   /** Google Places caps a text search at ~60 results across 3 pages. */
   async function handleLoadMore() {
-    if (!nextPageToken) return;
+    if (demo || !nextPageToken) return;
     setLoadingMore(true);
     try {
       const res = await runSearch({
@@ -180,6 +197,18 @@ export function LeadEngine() {
     setOpenProspect(p);
     setSelectedEmail(null);
     if (enrichments[p.id] || !p.domain) return;
+
+    if (demo) {
+      // Demo Mode: pre-saved contacts, no Hunter/Prospeo/Snov call.
+      const sample = DEMO_ENRICHMENTS[p.domain];
+      if (sample) {
+        setEnrichments((prev) => ({ ...prev, [p.id]: sample }));
+        toast.info("Demo Mode — pre-saved contacts, no enrichment credit used.");
+      } else {
+        toast.info("No sample contacts for this company.");
+      }
+      return;
+    }
 
     // Never spend a Hunter credit on a domain we've already enriched.
     const cached = getCachedEnrichment(p.domain);
@@ -243,6 +272,17 @@ export function LeadEngine() {
   async function handleSend() {
     if (!openProspect || !activeMatch || !campaignId) return;
     setSending(true);
+    if (demo) {
+      // Demo Mode: confirm success without calling Instantly or saving data.
+      setTimeout(() => {
+        setSentCount((n) => n + 1);
+        setSending(false);
+        toast.success(
+          `Demo Mode — ${activeMatch.contact.email} would be added to the campaign. No outreach sent.`,
+        );
+      }, 400);
+      return;
+    }
     const [firstName, ...rest] = (activeMatch.contact.name ?? "").split(" ");
     try {
       const res = await runSend({
@@ -303,17 +343,20 @@ export function LeadEngine() {
               <span className="eyebrow">Lead Engine</span>
             </div>
             <nav className="flex items-center gap-5 text-sm">
-              <Link to="/" className="font-medium text-foreground">
+              <Link
+                to={demo ? "/demo/app" : "/app"}
+                className="font-medium text-foreground"
+              >
                 Lead Engine
               </Link>
               <Link
-                to="/pipeline"
+                to={demo ? "/demo/pipeline" : "/pipeline"}
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 Pipeline
               </Link>
               <Link
-                to="/priority-targets"
+                to={demo ? "/demo/priority-targets" : "/priority-targets"}
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 Priority Targets
