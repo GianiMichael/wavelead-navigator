@@ -34,7 +34,6 @@ function LandingPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -48,21 +47,7 @@ function LandingPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        if (!data.session) {
-          toast.info("Account created — check your email to confirm before signing in.");
-          setMode("signin");
-          return;
-        }
-        navigate({ to: "/app", replace: true });
-        return;
-      }
+      // Registration is closed at the backend — this is a sign-in-only surface.
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       navigate({ to: "/app", replace: true });
@@ -72,6 +57,7 @@ function LandingPage() {
       setBusy(false);
     }
   }
+
 
   return (
     <main className="pipeline-scope min-h-screen">
@@ -120,7 +106,7 @@ function LandingPage() {
 
             <div className="glass-panel rounded-2xl p-8">
               <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
-                {mode === "signin" ? "Sign in" : "Create account"}
+                Sign in
               </div>
               <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
                 <div className="space-y-2">
@@ -145,7 +131,7 @@ function LandingPage() {
                   <Input
                     id="password"
                     type="password"
-                    autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                    autoComplete="current-password"
                     required
                     minLength={8}
                     value={password}
@@ -159,22 +145,10 @@ function LandingPage() {
                   disabled={busy}
                   className="grad-fill w-full rounded-full border-0 font-medium text-black hover:opacity-90"
                 >
-                  {busy
-                    ? "Working…"
-                    : mode === "signin"
-                      ? "Sign in to Lead Engine"
-                      : "Create account"}
+                  {busy ? "Working…" : "Sign in to Lead Engine"}
                 </Button>
               </form>
-              <button
-                type="button"
-                onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-                className="mt-5 text-xs text-white/50 transition-colors hover:text-white"
-              >
-                {mode === "signin"
-                  ? "Need an account? Create one"
-                  : "Already have an account? Sign in"}
-              </button>
+
               <p className="mt-6 text-xs" style={{ color: "var(--cc-muted)" }}>
                 Signing in unlocks live Google Places search, enrichment providers, Instantly
                 campaigns and your real pipeline data.
