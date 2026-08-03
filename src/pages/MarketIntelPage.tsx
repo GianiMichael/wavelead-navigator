@@ -10,7 +10,7 @@ import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
 import { getMarketIntel } from "@/lib/market-intel.functions";
 import { bandLabel, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
 
-const intelQuery = queryOptions({
+export const intelQuery = queryOptions({
   queryKey: ["market-intel"],
   queryFn: () => getMarketIntel(),
   staleTime: 60 * 60 * 1000,
@@ -773,7 +773,7 @@ function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: st
 /* ── Page ───────────────────────────────────────────────────────── */
 
 
-export function PriorityTargetsPage() {
+export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
   const { data } = useSuspenseQuery(intelQuery);
   const [selected, setSelected] = useState<ScoreResult | null>(null);
   const [industryFilter, setIndustryFilter] = useState("all");
@@ -829,13 +829,22 @@ export function PriorityTargetsPage() {
               </span>
             </div>
             <nav className="flex items-center gap-5 text-sm">
-              <Link to="/" className="text-white/60 transition-colors hover:text-white">
+              <Link
+                to={demo ? "/demo/app" : "/app"}
+                className="text-white/60 transition-colors hover:text-white"
+              >
                 Lead Engine
               </Link>
-              <Link to="/pipeline" className="text-white/60 transition-colors hover:text-white">
+              <Link
+                to={demo ? "/demo/pipeline" : "/pipeline"}
+                className="text-white/60 transition-colors hover:text-white"
+              >
                 Pipeline
               </Link>
-              <Link to="/priority-targets" className="font-medium text-white">
+              <Link
+                to={demo ? "/demo/priority-targets" : "/priority-targets"}
+                className="font-medium text-white"
+              >
                 Market Intel
               </Link>
             </nav>
