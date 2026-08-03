@@ -32,6 +32,24 @@ export function loadEnrichmentCache(): Record<string, CachedEnrichment> {
   }
 }
 
+/** Alias used by the cloud sync layer. */
+export const readEnrichmentCache = loadEnrichmentCache;
+
+function writeCache(cache: Record<string, CachedEnrichment>) {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(cache));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/** Merge cloud rows into the local mirror (cloud wins on conflict). */
+export function mergeEnrichmentCache(incoming: Record<string, CachedEnrichment>) {
+  writeCache({ ...loadEnrichmentCache(), ...incoming });
+}
+
+
 export function getCachedEnrichment(domain: string): CachedEnrichment | null {
   if (!domain) return null;
   return loadEnrichmentCache()[normalizeDomain(domain)] ?? null;
