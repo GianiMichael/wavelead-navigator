@@ -90,17 +90,24 @@ function PipelinePage() {
   }
 
   useEffect(() => {
-    const stored = loadPipeline();
-    setRecords(stored);
-    const newest = stored
-      .map((r) => r.lastSynced)
-      .filter(Boolean)
-      .sort()
-      .pop();
-    if (newest) setLastSynced(newest);
-    void sync(stored, true);
+    void (async () => {
+      // Shared cloud table is the source of truth; local storage is a mirror.
+      const { hydrateFromCloud, pushLocalToCloud } = await import("@/lib/cloud-sync");
+      await pushLocalToCloud();
+      await hydrateFromCloud();
+      const stored = loadPipeline();
+      setRecords(stored);
+      const newest = stored
+        .map((r) => r.lastSynced)
+        .filter(Boolean)
+        .sort()
+        .pop();
+      if (newest) setLastSynced(newest);
+      void sync(stored, true);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   const engaged = records.filter((r) => ENGAGED_STATUSES.includes(r.status)).length;
   const enriched = records.length;

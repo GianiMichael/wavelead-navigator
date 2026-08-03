@@ -18,7 +18,14 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { StatBlock } from "@/components/StatBlock";
 import { ProspectTable } from "@/components/ProspectTable";
-import { INDUSTRY_OPTIONS, rankAllMatches, matchDecisionMaker } from "@/lib/tier-matching";
+import {
+  INDUSTRY_OPTIONS,
+  rankAllMatches,
+  matchDecisionMaker,
+  tierLabel,
+  tierShortLabel,
+} from "@/lib/tier-matching";
+
 import { MARKETS } from "@/data/deregulated-markets";
 import { energyPriorityForIndustry } from "@/lib/energy-priority";
 import { addPipelineRecord, contactedDomains } from "@/lib/pipeline-store";
@@ -88,9 +95,19 @@ function LeadEngine() {
   const [exhausted, setExhausted] = useState(false);
 
   useEffect(() => {
+    // Pull the shared cloud copy first (so the published site and the editor
+    // see the same data), pushing up anything only stored locally.
+    void (async () => {
+      const { hydrateFromCloud, pushLocalToCloud } = await import("@/lib/cloud-sync");
+      await pushLocalToCloud();
+      await hydrateFromCloud();
+      setCachedSet(loadCachedDomains());
+      setContactedSet(contactedDomains());
+    })();
     setCachedSet(loadCachedDomains());
     setContactedSet(contactedDomains());
   }, []);
+
 
   const campaigns = useQuery({
     queryKey: ["instantly-campaigns"],
@@ -233,7 +250,7 @@ function LeadEngine() {
         <div className="text-sm text-muted-foreground">{r.contact.title || "Title unknown"}</div>
         <div className="text-xs text-muted-foreground">{r.contact.email}</div>
         <div className="mt-2 text-[11px] tracking-wide text-accent">
-          {r.tier === "Unmatched" ? "No tier match" : `Tier ${r.tierIndex + 1} · ${r.tier}`}
+          {tierLabel(r)}
           {r.excluded && (
             <span className="ml-2 text-muted-foreground">Non-site scope — deprioritized</span>
           )}
@@ -267,10 +284,8 @@ function LeadEngine() {
         title: activeMatch.contact.title,
         email: activeMatch.contact.email,
         domain: openProspect.domain,
-        tier:
-          activeMatch.tier === "Unmatched"
-            ? "Unmatched"
-            : `Tier ${activeMatch.tierIndex + 1}`,
+        tier: tierShortLabel(activeMatch),
+
         industry,
         industryLabel,
         deregulated:

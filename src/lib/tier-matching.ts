@@ -49,6 +49,13 @@ function keywordScore(title: string, keyword: string): number {
   return hits.length / kWords.length >= 0.6 ? (hits.length / kWords.length) * 0.75 : 0;
 }
 
+/**
+ * Only the first four entries of an industry waterfall are numbered tiers.
+ * Longer configured lists (Manufacturing has 10 titles) still match, but they
+ * are shown as secondary matches instead of inventing a "Tier 6".
+ */
+export const TIER_DISPLAY_MAX = 4;
+
 export interface TierMatch {
   contact: EnrichedContact;
   tier: string;
@@ -57,6 +64,21 @@ export interface TierMatch {
   /** Title contained a Global/Corporate/etc. scope word — deprioritized. */
   excluded: boolean;
 }
+
+/** Human label for a match — never emits a tier number above the configured tier count. */
+export function tierLabel(match: Pick<TierMatch, "tier" | "tierIndex">): string {
+  if (match.tier === "Unmatched") return "No tier match";
+  if (match.tierIndex >= TIER_DISPLAY_MAX) return `Secondary match · ${match.tier}`;
+  return `Tier ${match.tierIndex + 1} · ${match.tier}`;
+}
+
+/** Short label used for stored pipeline records. */
+export function tierShortLabel(match: Pick<TierMatch, "tier" | "tierIndex">): string {
+  if (match.tier === "Unmatched") return "Unmatched";
+  if (match.tierIndex >= TIER_DISPLAY_MAX) return `Secondary · ${match.tier}`;
+  return `Tier ${match.tierIndex + 1}`;
+}
+
 
 /** Facility-specific matches always beat scope-word matches, regardless of tier. */
 function isBetter(a: TierMatch, b: TierMatch | null): boolean {
