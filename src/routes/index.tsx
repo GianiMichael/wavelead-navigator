@@ -95,9 +95,19 @@ function LeadEngine() {
   const [exhausted, setExhausted] = useState(false);
 
   useEffect(() => {
+    // Pull the shared cloud copy first (so the published site and the editor
+    // see the same data), pushing up anything only stored locally.
+    void (async () => {
+      const { hydrateFromCloud, pushLocalToCloud } = await import("@/lib/cloud-sync");
+      await pushLocalToCloud();
+      await hydrateFromCloud();
+      setCachedSet(loadCachedDomains());
+      setContactedSet(contactedDomains());
+    })();
     setCachedSet(loadCachedDomains());
     setContactedSet(contactedDomains());
   }, []);
+
 
   const campaigns = useQuery({
     queryKey: ["instantly-campaigns"],
