@@ -27,6 +27,7 @@ export const getMarketIntel = createServerFn({ method: "GET" }).handler(async ()
           state: rate.state,
           stateName: rate.stateName,
           intensity: industry.score,
+          ...(industry.siteEui !== undefined ? { siteEui: industry.siteEui } : {}),
           rateCents: rate.rateCents,
           ...(rate.trendPct !== undefined ? { rateTrendPct: rate.trendPct } : {}),
           ...(density ? { establishments: density.establishments } : {}),
