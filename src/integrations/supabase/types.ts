@@ -40,8 +40,12 @@ export type Database = {
           interval_start: string | null
           iso: string
           iso_name: string
+          load_at: string | null
+          load_mw: number | null
           market: string
           price_mwh: number | null
+          rt_price_mwh: number | null
+          spread_pct: number | null
         }
         Insert: {
           error?: string | null
@@ -50,8 +54,12 @@ export type Database = {
           interval_start?: string | null
           iso: string
           iso_name?: string
+          load_at?: string | null
+          load_mw?: number | null
           market?: string
           price_mwh?: number | null
+          rt_price_mwh?: number | null
+          spread_pct?: number | null
         }
         Update: {
           error?: string | null
@@ -60,8 +68,12 @@ export type Database = {
           interval_start?: string | null
           iso?: string
           iso_name?: string
+          load_at?: string | null
+          load_mw?: number | null
           market?: string
           price_mwh?: number | null
+          rt_price_mwh?: number | null
+          spread_pct?: number | null
         }
         Relationships: []
       }
