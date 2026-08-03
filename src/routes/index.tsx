@@ -34,7 +34,6 @@ function LandingPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -48,21 +47,7 @@ function LandingPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        if (!data.session) {
-          toast.info("Account created — check your email to confirm before signing in.");
-          setMode("signin");
-          return;
-        }
-        navigate({ to: "/app", replace: true });
-        return;
-      }
+      // Registration is closed at the backend — this is a sign-in-only surface.
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       navigate({ to: "/app", replace: true });
@@ -72,6 +57,7 @@ function LandingPage() {
       setBusy(false);
     }
   }
+
 
   return (
     <main className="pipeline-scope min-h-screen">
