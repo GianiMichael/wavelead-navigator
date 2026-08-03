@@ -386,7 +386,7 @@ function shiftMonth(period: string, n: number): string {
 }
 
 export async function fetchSteoForecast(): Promise<SteoForecastResult> {
-  return cached("eia:steo-commercial-price", DAY, async () => {
+  return cached<SteoForecastResult>("eia:steo-commercial-price", DAY, async () => {
     const apiKey = process.env["EIA_API_KEY"];
     const codes = Object.keys(STEO_REGIONS);
     const base = { regions: {} as Record<string, SteoRegionForecast>, vintage: "", fetchedAt: new Date().toISOString() };
