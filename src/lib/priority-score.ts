@@ -10,8 +10,10 @@ export interface ScoreInputs {
   industryLabel: string;
   state: string;
   stateName: string;
-  /** CBECS 1-10 energy intensity. */
+  /** CBECS 1-10 energy intensity (internal scoring only — never displayed). */
   intensity: number;
+  /** Real CBECS site EUI in kBtu/sq ft — the number shown to users. */
+  siteEui?: number;
   /** Commercial retail rate, cents per kWh. Undefined when EIA is unavailable. */
   rateCents?: number;
   /** Month-over-month direction of the retail rate, as a fraction (0.08 = +8%). */
