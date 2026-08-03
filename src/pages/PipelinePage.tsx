@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
@@ -16,25 +16,8 @@ import {
 import { INDUSTRY_OPTIONS } from "@/lib/tier-matching";
 import { getCachedEnrichment } from "@/lib/enrichment-cache";
 import { Input } from "@/components/ui/input";
+import { DEMO_PIPELINE } from "@/data/demo-data";
 
-export const Route = createFileRoute("/pipeline")({
-  head: () => ({
-    meta: [
-      { title: "Pipeline — WaveClimate Lead Engine" },
-      {
-        name: "description",
-        content:
-          "Live command center for every prospect enriched and routed to outreach, synced with Instantly campaign status.",
-      },
-      { property: "og:title", content: "Pipeline — WaveClimate Lead Engine" },
-      {
-        property: "og:description",
-        content: "Track outreach status, industry mix and engagement across your saved leads.",
-      },
-    ],
-  }),
-  component: PipelinePage,
-});
 
 const TIERS = ["Tier 1", "Tier 2", "Tier 3", "Tier 4"];
 
@@ -54,7 +37,7 @@ function statusTone(status: LeadStatus) {
   }
 }
 
-function PipelinePage() {
+export function PipelinePage({ demo = false }: { demo?: boolean }) {
   const runSync = useServerFn(syncLeadStatuses);
 
   const [records, setRecords] = useState<PipelineRecord[]>([]);
@@ -69,6 +52,7 @@ function PipelinePage() {
   const [nameQuery, setNameQuery] = useState("");
 
   async function sync(current: PipelineRecord[], silent = false) {
+    if (demo) return;
     const ids = current.map((r) => r.leadId).filter(Boolean);
     if (ids.length === 0) return;
     setSyncing(true);
@@ -90,6 +74,12 @@ function PipelinePage() {
   }
 
   useEffect(() => {
+    if (demo) {
+      // Demo Mode: frozen sample outreach records, no cloud read, no Instantly.
+      setRecords(DEMO_PIPELINE);
+      setLastSynced(DEMO_PIPELINE[0]?.lastSynced ?? null);
+      return;
+    }
     void (async () => {
       // Shared cloud table is the source of truth; local storage is a mirror.
       const { hydrateFromCloud, pushLocalToCloud } = await import("@/lib/cloud-sync");
@@ -106,7 +96,7 @@ function PipelinePage() {
       void sync(stored, true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [demo]);
 
 
   const engaged = records.filter((r) => ENGAGED_STATUSES.includes(r.status)).length;
@@ -182,21 +172,27 @@ function PipelinePage() {
               </span>
             </div>
             <nav className="flex items-center gap-5 text-sm">
-              <Link to="/" className="text-white/60 transition-colors hover:text-white">
+              <Link
+                to={demo ? "/demo/app" : "/app"}
+                className="text-white/60 transition-colors hover:text-white"
+              >
                 Lead Engine
               </Link>
-              <Link to="/pipeline" className="font-medium text-white">
+              <Link
+                to={demo ? "/demo/pipeline" : "/pipeline"}
+                className="font-medium text-white"
+              >
                 Pipeline
               </Link>
               <Link
-                to="/priority-targets"
+                to={demo ? "/demo/priority-targets" : "/priority-targets"}
                 className="text-white/60 transition-colors hover:text-white"
               >
                 Priority Targets
               </Link>
               <button
                 onClick={() => void sync(records)}
-                disabled={syncing}
+                disabled={syncing || demo}
                 className="grad-fill rounded-full px-4 py-2 text-xs font-medium text-black transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {syncing ? "Syncing…" : "Refresh status"}

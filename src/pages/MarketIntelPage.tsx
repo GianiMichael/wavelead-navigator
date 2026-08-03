@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 
 import { lookupMarket } from "@/data/deregulated-markets";
@@ -10,46 +10,12 @@ import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
 import { getMarketIntel } from "@/lib/market-intel.functions";
 import { bandLabel, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
 
-const intelQuery = queryOptions({
+export const intelQuery = queryOptions({
   queryKey: ["market-intel"],
   queryFn: () => getMarketIntel(),
   staleTime: 60 * 60 * 1000,
 });
 
-export const Route = createFileRoute("/priority-targets")({
-  loader: ({ context }) => context.queryClient.ensureQueryData(intelQuery),
-  head: () => ({
-    meta: [
-      { title: "Market Intelligence — WaveClimate Lead Engine" },
-      {
-        name: "description",
-        content:
-          "Today's top industry + state pick, commercial electricity rates by deregulated state, CBECS energy intensity and live U.S. grid demand.",
-      },
-      { property: "og:title", content: "Market Intelligence — WaveClimate Lead Engine" },
-      {
-        property: "og:description",
-        content:
-          "Five focused market visuals: top pick, state electricity rates, energy intensity by industry and live grid demand.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: PriorityTargetsPage,
-  errorComponent: ({ error }) => (
-    <main className="pipeline-scope flex min-h-screen items-center justify-center px-6">
-      <p role="alert" className="text-sm text-white/70">
-        Market intelligence didn't load: {error.message}
-      </p>
-    </main>
-  ),
-  notFoundComponent: () => (
-    <main className="pipeline-scope flex min-h-screen items-center justify-center">
-      <p className="text-sm text-white/70">Nothing here.</p>
-    </main>
-  ),
-});
 
 function monthLabel(period: string) {
   if (!period) return "unknown";
@@ -293,15 +259,22 @@ function hourLabel(period: string) {
   const m = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
   if (!m) return period;
   const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4])));
-  return d.toLocaleTimeString("en-US", { hour: "numeric" });
+  // Pinned to UTC so server-rendered and client-rendered labels always match.
+  return d.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "UTC" });
 }
 
 function hourStamp(period: string) {
   const m = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
   if (!m) return period;
   const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4])));
-  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric" });
+  return `${d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    timeZone: "UTC",
+  })} UTC`;
 }
+
 
 function GridDemandWidget({
   grid,
@@ -807,7 +780,7 @@ function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: st
 /* ── Page ───────────────────────────────────────────────────────── */
 
 
-function PriorityTargetsPage() {
+export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
   const { data } = useSuspenseQuery(intelQuery);
   const [selected, setSelected] = useState<ScoreResult | null>(null);
   const [industryFilter, setIndustryFilter] = useState("all");
@@ -863,13 +836,22 @@ function PriorityTargetsPage() {
               </span>
             </div>
             <nav className="flex items-center gap-5 text-sm">
-              <Link to="/" className="text-white/60 transition-colors hover:text-white">
+              <Link
+                to={demo ? "/demo/app" : "/app"}
+                className="text-white/60 transition-colors hover:text-white"
+              >
                 Lead Engine
               </Link>
-              <Link to="/pipeline" className="text-white/60 transition-colors hover:text-white">
+              <Link
+                to={demo ? "/demo/pipeline" : "/pipeline"}
+                className="text-white/60 transition-colors hover:text-white"
+              >
                 Pipeline
               </Link>
-              <Link to="/priority-targets" className="font-medium text-white">
+              <Link
+                to={demo ? "/demo/priority-targets" : "/priority-targets"}
+                className="font-medium text-white"
+              >
                 Market Intel
               </Link>
             </nav>

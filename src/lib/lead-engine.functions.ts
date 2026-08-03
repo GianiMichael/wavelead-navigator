@@ -1,11 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
 import { searchPlaces } from "@/lib/places.server";
 import { enrichDomain } from "@/lib/enrichment.server";
 import { listCampaigns, addLead, fetchLeadStatuses } from "@/lib/instantly.server";
 
 export const searchProspects = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
       .object({
@@ -21,6 +24,7 @@ export const searchProspects = createServerFn({ method: "POST" })
   });
 
 export const enrichCompany = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
       .object({
@@ -36,11 +40,14 @@ export const enrichCompany = createServerFn({ method: "POST" })
     );
   });
 
-export const getCampaigns = createServerFn({ method: "GET" }).handler(async () => {
+export const getCampaigns = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
   return await listCampaigns();
 });
 
 export const sendToCampaign = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
       .object({
@@ -60,6 +67,7 @@ export const sendToCampaign = createServerFn({ method: "POST" })
   });
 
 export const syncLeadStatuses = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z.object({ leadIds: z.array(z.string().min(1)).max(500) }).parse(data),
   )
