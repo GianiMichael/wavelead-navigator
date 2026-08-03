@@ -52,6 +52,8 @@ export const getMarketIntel = createServerFn({ method: "GET" }).handler(async ()
     rates: ratesResult,
     density: densityResult,
     grid: gridResult,
+    steo: steoResult,
+
     generatedAt: new Date().toISOString(),
   };
 });
