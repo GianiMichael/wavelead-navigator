@@ -21,13 +21,13 @@ export const Route = createFileRoute("/priority-targets")({
       {
         name: "description",
         content:
-          "Single-view market intelligence dashboard: energy intensity in kBtu/sq ft, commercial electricity rates and establishment density across deregulated states.",
+          "Today's top industry + state pick, commercial electricity rates by deregulated state, CBECS energy intensity and live U.S. grid demand.",
       },
       { property: "og:title", content: "Market Intelligence — WaveClimate Lead Engine" },
       {
         property: "og:description",
         content:
-          "Scatter map of industry + state opportunities scored on CBECS intensity, EIA retail rates and Census density.",
+          "Five focused market visuals: top pick, state electricity rates, energy intensity by industry and live grid demand.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -62,12 +62,6 @@ function shortMonth(period: string) {
   return d.toLocaleString("en-US", { month: "short", year: "2-digit" });
 }
 
-const BAND_COLOR: Record<PriorityBand, string> = {
-  high: "oklch(0.78 0.17 155)",
-  medium: "oklch(0.83 0.15 85)",
-  low: "oklch(0.68 0.20 20)",
-};
-
 function bandTone(band: PriorityBand) {
   return band === "high"
     ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
@@ -76,165 +70,295 @@ function bandTone(band: PriorityBand) {
       : "border-rose-400/30 bg-rose-400/10 text-rose-200";
 }
 
-function rowId(r: { industryKey: string; state: string }) {
-  return `${r.industryKey}|${r.state}`;
-}
-
 function euiFor(r: ScoreResult) {
   return r.siteEui ?? intensityForIndustry(r.industryKey)?.siteEui ?? 0;
 }
 
-/* ── Scatter / bubble chart ─────────────────────────────────────── */
+/** Reasoning line, with the rate explicitly named as electricity. */
+function electricReason(r: ScoreResult) {
+  return r.reason.replace("¢/kWh commercial rate", "¢/kWh commercial electricity rate");
+}
 
-function ScatterChart({
-  rows,
-  selectedId,
-  onSelect,
-}: {
-  rows: ScoreResult[];
-  selectedId: string | null;
-  onSelect: (r: ScoreResult) => void;
-}) {
-  const [hover, setHover] = useState<{ r: ScoreResult; x: number; y: number } | null>(null);
+/* ── 1. Hero: today's top pick ──────────────────────────────────── */
 
-  const w = 720;
-  const h = 460;
-  const pad = { l: 62, r: 22, t: 18, b: 52 };
-  const plotW = w - pad.l - pad.r;
-  const plotH = h - pad.t - pad.b;
-
-  const pts = rows.filter((r) => r.rateCents !== undefined && euiFor(r) > 0);
-
-  const rateVals = pts.map((r) => r.rateCents!);
-  const euiVals = pts.map((r) => euiFor(r));
-  const minRate = Math.min(...rateVals, 8) * 0.94;
-  const maxRate = Math.max(...rateVals, 12) * 1.06;
-  const maxEui = Math.max(...euiVals, 10) * 1.08;
-  const maxEstab = Math.max(...pts.map((r) => r.establishments ?? 0), 1);
-
-  const x = (v: number) => pad.l + ((v - minRate) / (maxRate - minRate || 1)) * plotW;
-  const y = (v: number) => pad.t + plotH - (v / (maxEui || 1)) * plotH;
-  const radius = (n?: number) => (n === undefined ? 5 : 5 + Math.sqrt(n / maxEstab) * 18);
-
-  const yTicks = 5;
-  const xTicks = 5;
+function HeroCard({ row, onOpen }: { row: ScoreResult; onOpen: () => void }) {
+  const stats = [
+    {
+      label: "Commercial electricity rate",
+      value: row.rateCents !== undefined ? `${row.rateCents.toFixed(2)}¢` : "n/a",
+      unit: "per kWh",
+    },
+    {
+      label: "Energy intensity",
+      value: euiFor(row) ? `${euiFor(row)}` : "n/a",
+      unit: "kBtu/sq ft",
+    },
+    {
+      label: "Rate trend",
+      value:
+        row.rateTrendPct !== undefined
+          ? `${row.rateTrendPct > 0 ? "+" : ""}${(row.rateTrendPct * 100).toFixed(1)}%`
+          : "n/a",
+      unit: "vs. 3 mo. prior",
+    },
+    {
+      label: "Establishments",
+      value: row.establishments !== undefined ? row.establishments.toLocaleString() : "n/a",
+      unit: "Census CBP",
+    },
+  ];
 
   return (
-    <div className="relative">
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="Rate vs energy intensity scatter">
-        {Array.from({ length: yTicks + 1 }, (_, i) => {
-          const v = (maxEui / yTicks) * i;
-          return (
-            <g key={`y${i}`}>
-              <line
-                x1={pad.l}
-                x2={w - pad.r}
-                y1={y(v)}
-                y2={y(v)}
-                stroke="rgba(255,255,255,0.10)"
-                strokeWidth={1}
-              />
-              <text x={pad.l - 10} y={y(v) + 4} textAnchor="end" fontSize={11} fill="rgba(255,255,255,0.5)">
-                {Math.round(v)}
-              </text>
-            </g>
-          );
-        })}
-        {Array.from({ length: xTicks + 1 }, (_, i) => {
-          const v = minRate + ((maxRate - minRate) / xTicks) * i;
-          return (
-            <text
-              key={`x${i}`}
-              x={x(v)}
-              y={h - pad.b + 20}
-              textAnchor="middle"
-              fontSize={11}
-              fill="rgba(255,255,255,0.5)"
-            >
-              {v.toFixed(1)}
-            </text>
-          );
-        })}
-        <text
-          transform={`translate(16 ${pad.t + plotH / 2}) rotate(-90)`}
-          textAnchor="middle"
-          fontSize={12}
-          fill="rgba(255,255,255,0.65)"
+    <button
+      onClick={onOpen}
+      className="glass-panel block w-full rounded-3xl p-6 text-left transition-colors hover:bg-white/6 sm:p-8"
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="eyebrow" style={{ color: "var(--cc-muted)" }}>
+          Today's top pick
+        </span>
+        <span
+          className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${bandTone(row.band)}`}
         >
-          Energy intensity (kBtu/sq ft)
-        </text>
-        <text
-          x={pad.l + plotW / 2}
-          y={h - 8}
-          textAnchor="middle"
-          fontSize={12}
-          fill="rgba(255,255,255,0.65)"
-        >
-          Commercial rate (¢/kWh)
-        </text>
-
-        {pts.map((r) => {
-          const id = rowId(r);
-          const sel = id === selectedId;
-          return (
-            <circle
-              key={id}
-              cx={x(r.rateCents!)}
-              cy={y(euiFor(r))}
-              r={radius(r.establishments)}
-              fill={BAND_COLOR[r.band]}
-              fillOpacity={sel ? 0.6 : 0.28}
-              stroke={BAND_COLOR[r.band]}
-              strokeWidth={sel ? 2.5 : 1.2}
-              className="cursor-pointer transition-[fill-opacity]"
-              onMouseEnter={(e) =>
-                setHover({ r, x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY })
-              }
-              onMouseLeave={() => setHover(null)}
-              onClick={() => onSelect(r)}
-            />
-          );
-        })}
-      </svg>
-
-      {hover && (
-        <div
-          className="pointer-events-none absolute z-20 w-56 rounded-xl border border-white/15 bg-black/85 p-3 text-[11px] leading-relaxed backdrop-blur"
-          style={{
-            left: Math.min(hover.x + 12, 420),
-            top: Math.max(hover.y - 10, 0),
-          }}
-        >
-          <div className="text-sm font-medium">{hover.r.industryLabel}</div>
-          <div style={{ color: "var(--cc-muted)" }}>{hover.r.stateName}</div>
-          <div className="mt-1.5 space-y-0.5">
-            <div>Rate: {hover.r.rateCents?.toFixed(2)}¢/kWh</div>
-            <div>Intensity: {euiFor(hover.r)} kBtu/sq ft</div>
-            <div>
-              Establishments:{" "}
-              {hover.r.establishments !== undefined
-                ? hover.r.establishments.toLocaleString()
-                : "n/a"}
-            </div>
-            <div>
-              Priority: {bandLabel(hover.r.band)} · {hover.r.score.toFixed(0)}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px]" style={{ color: "var(--cc-muted)" }}>
-        {(["high", "medium", "low"] as PriorityBand[]).map((b) => (
-          <span key={b} className="flex items-center gap-1.5">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-full"
-              style={{ background: BAND_COLOR[b] }}
-            />
-            {bandLabel(b)} priority
-          </span>
-        ))}
-        <span>Bubble size = establishments found (Census CBP)</span>
+          {bandLabel(row.band)} priority · {row.score.toFixed(0)}
+        </span>
       </div>
+
+      <h2 className="headline mt-3 text-3xl sm:text-4xl">
+        <span className="grad-text">{row.industryLabel}</span> in {row.stateName}
+      </h2>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((s) => (
+          <div key={s.label} className="rounded-2xl border border-white/10 bg-white/4 p-4">
+            <div className="text-2xl font-semibold tabular-nums sm:text-3xl">{s.value}</div>
+            <div className="mt-1 text-[11px]" style={{ color: "var(--cc-muted)" }}>
+              {s.unit}
+            </div>
+            <div className="eyebrow mt-2 text-[10px]">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-5 text-sm" style={{ color: "var(--cc-muted)" }}>
+        {electricReason(row)}
+      </p>
+    </button>
+  );
+}
+
+/* ── 2. State electricity rates ─────────────────────────────────── */
+
+interface RateRow {
+  state: string;
+  stateName: string;
+  rateCents: number;
+}
+
+function StateRatesPanel({
+  rates,
+  onSelect,
+}: {
+  rates: RateRow[];
+  onSelect: (state: string) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const sorted = [...rates].sort((a, b) => b.rateCents - a.rateCents);
+  const shown = showAll ? sorted : sorted.slice(0, 5);
+  const max = sorted[0]?.rateCents ?? 1;
+
+  return (
+    <div className="glass-panel rounded-2xl p-5">
+      <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
+        Electricity — commercial rate (¢/kWh)
+      </div>
+
+      <ul className={`mt-4 space-y-1 ${showAll ? "max-h-[300px] overflow-y-auto pr-1" : ""}`}>
+        {shown.map((r, i) => (
+          <li key={r.state}>
+            <button
+              onClick={() => onSelect(r.state)}
+              className="grid w-full grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-white/6"
+            >
+              <span className="text-[11px] tabular-nums" style={{ color: "var(--cc-muted)" }}>
+                {i + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm">{r.stateName}</span>
+                <span className="mt-1 block h-1.5 rounded-full bg-white/8">
+                  <span
+                    className="block h-1.5 rounded-full"
+                    style={{
+                      width: `${(r.rateCents / max) * 100}%`,
+                      background: "linear-gradient(90deg, oklch(0.62 0.24 300), oklch(0.82 0.15 55))",
+                    }}
+                  />
+                </span>
+              </span>
+              <span className="text-sm font-semibold tabular-nums">{r.rateCents.toFixed(1)}¢</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {sorted.length > 5 && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="mt-3 text-[11px] underline underline-offset-4"
+          style={{ color: "var(--cc-muted)" }}
+        >
+          {showAll ? "Show top 5" : `Show all ${sorted.length} states`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ── 3. Energy intensity by industry (reference) ────────────────── */
+
+function IntensityPanel({ onSelect }: { onSelect: (industryKey: string) => void }) {
+  const [showAll, setShowAll] = useState(false);
+  const all = rankedIntensity().filter((e) => e.siteEui !== undefined);
+  const shown = showAll ? all : all.slice(0, 5);
+  const max = all[0]?.siteEui ?? 1;
+
+  return (
+    <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
+          Total combined energy intensity (kBtu/sq ft)
+        </div>
+        <span
+          className="rounded-full border border-white/12 px-2 py-0.5 text-[10px]"
+          style={{ color: "var(--cc-muted)" }}
+        >
+          Reference data
+        </span>
+      </div>
+      <p className="mt-1 text-[11px]" style={{ color: "var(--cc-muted)" }}>
+        Electricity + natural gas · CBECS {CBECS_SOURCE.dataDate}
+      </p>
+
+      <ul className={`mt-4 space-y-1 ${showAll ? "max-h-[300px] overflow-y-auto pr-1" : ""}`}>
+        {shown.map((e, i) => (
+          <li key={e.key}>
+            <button
+              onClick={() => onSelect(e.key)}
+              className="grid w-full grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-white/6"
+            >
+              <span className="text-[11px] tabular-nums" style={{ color: "var(--cc-muted)" }}>
+                {i + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm">{e.label}</span>
+                <span className="mt-1 block h-1.5 rounded-full bg-white/8">
+                  <span
+                    className="block h-1.5 rounded-full bg-white/35"
+                    style={{ width: `${((e.siteEui ?? 0) / max) * 100}%` }}
+                  />
+                </span>
+              </span>
+              <span className="text-sm font-semibold tabular-nums">{e.siteEui}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {all.length > 5 && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="mt-3 text-[11px] underline underline-offset-4"
+          style={{ color: "var(--cc-muted)" }}
+        >
+          {showAll ? "Show top 5" : `Show all ${all.length} industries`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ── 4. Live grid demand ────────────────────────────────────────── */
+
+function hoursAgo(period: string): number | null {
+  const m = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
+  if (!m) return null;
+  const t = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]));
+  return Math.max(0, Math.round((Date.now() - t) / 3_600_000));
+}
+
+function GridDemandWidget({
+  grid,
+}: {
+  grid: {
+    latest?: { period: string; mwh: number };
+    history: { period: string; mwh: number }[];
+    regionName: string;
+    error?: string;
+  };
+}) {
+  const [age, setAge] = useState<number | null>(null);
+  useEffect(() => {
+    if (grid.latest) setAge(hoursAgo(grid.latest.period));
+  }, [grid.latest]);
+
+  const pts = grid.history;
+  const w = 260;
+  const h = 60;
+  const values = pts.map((p) => p.mwh);
+  const min = Math.min(...values, Infinity);
+  const max = Math.max(...values, -Infinity);
+  const path =
+    pts.length > 1
+      ? pts
+          .map(
+            (p, i) =>
+              `${i === 0 ? "M" : "L"}${(i / (pts.length - 1)) * w},${
+                h - ((p.mwh - min) / (max - min || 1)) * (h - 6) - 3
+              }`,
+          )
+          .join(" ")
+      : "";
+
+  return (
+    <div className="glass-panel rounded-2xl p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
+          Electricity — grid demand (MW)
+        </div>
+        <span className="flex items-center gap-1.5 text-[10px]" style={{ color: "var(--cc-muted)" }}>
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+          {age === null ? "live" : age === 0 ? "updated just now" : `updated ${age}h ago`}
+        </span>
+      </div>
+
+      {grid.error || !grid.latest ? (
+        <p className="mt-4 text-xs text-amber-200">
+          Grid demand unavailable{grid.error ? `: ${grid.error}` : "."}
+        </p>
+      ) : (
+        <>
+          <div className="mt-3 text-3xl font-semibold tabular-nums">
+            {Math.round(grid.latest.mwh).toLocaleString()}
+            <span className="ml-1.5 text-sm font-normal" style={{ color: "var(--cc-muted)" }}>
+              MWh
+            </span>
+          </div>
+          <div className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
+            {grid.regionName} · last 24 hours
+          </div>
+
+          {path && (
+            <svg viewBox={`0 0 ${w} ${h}`} className="mt-3 w-full" role="img" aria-label="24-hour grid demand sparkline">
+              <path d={path} fill="none" stroke="oklch(0.66 0.26 340)" strokeWidth={2} />
+            </svg>
+          )}
+
+          <p className="mt-3 text-[11px]" style={{ color: "var(--cc-muted)" }}>
+            Total grid load, updated hourly — not a customer demand charge. Source: EIA-930 Hourly
+            Electric Grid Monitor.
+          </p>
+        </>
+      )}
     </div>
   );
 }
@@ -275,7 +399,7 @@ function RateHistoryChart({
   return (
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-sm font-medium">{stateName} commercial rate history</span>
+        <span className="text-sm font-medium">{stateName} commercial electricity rate history</span>
         <span className="text-xs" style={{ color: "var(--cc-muted)" }}>
           Trend {dir}
           {trendPct !== undefined ? ` (${(trendPct * 100).toFixed(1)}% vs. 3 months prior)` : ""}
@@ -288,13 +412,7 @@ function RateHistoryChart({
             const v = min + ((max - min) / ticks) * i;
             return (
               <g key={i}>
-                <line
-                  x1={pad.l}
-                  x2={w - pad.r}
-                  y1={y(v)}
-                  y2={y(v)}
-                  stroke="rgba(255,255,255,0.10)"
-                />
+                <line x1={pad.l} x2={w - pad.r} y1={y(v)} y2={y(v)} stroke="rgba(255,255,255,0.10)" />
                 <text x={pad.l - 8} y={y(v) + 4} textAnchor="end" fontSize={10} fill="rgba(255,255,255,0.5)">
                   {v.toFixed(1)}
                 </text>
@@ -314,12 +432,7 @@ function RateHistoryChart({
 
           {history.map((p, i) => (
             <g key={p.period}>
-              <circle
-                cx={x(i)}
-                cy={y(p.rateCents)}
-                r={hover === i ? 5 : 3}
-                fill="oklch(0.66 0.26 340)"
-              />
+              <circle cx={x(i)} cy={y(p.rateCents)} r={hover === i ? 5 : 3} fill="oklch(0.66 0.26 340)" />
               <rect
                 x={x(i) - plotW / (history.length * 2)}
                 y={pad.t}
@@ -387,7 +500,10 @@ function DetailPanel({
   const naics = naicsForIndustry(row.industryKey);
 
   const stats: { label: string; value: string }[] = [
-    { label: "Commercial rate", value: row.rateCents !== undefined ? `${row.rateCents.toFixed(2)}¢/kWh` : "n/a" },
+    {
+      label: "Commercial electricity rate",
+      value: row.rateCents !== undefined ? `${row.rateCents.toFixed(2)}¢/kWh` : "n/a",
+    },
     { label: "Energy intensity", value: euiFor(row) ? `${euiFor(row)} kBtu/sq ft` : "n/a" },
     {
       label: "Rate trend",
@@ -403,11 +519,7 @@ function DetailPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <button
-        aria-label="Close detail"
-        onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-      />
+      <button aria-label="Close detail" onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <aside className="glass-panel relative h-full w-full max-w-md overflow-y-auto border-l border-white/10 p-6">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
           <div className="min-w-0">
@@ -424,9 +536,7 @@ function DetailPanel({
           </button>
         </div>
 
-        <span
-          className={`mt-3 inline-block rounded-full border px-2.5 py-1 text-[11px] font-medium ${bandTone(row.band)}`}
-        >
+        <span className={`mt-3 inline-block rounded-full border px-2.5 py-1 text-[11px] font-medium ${bandTone(row.band)}`}>
           {bandLabel(row.band)} priority · {row.score.toFixed(0)}
         </span>
 
@@ -444,7 +554,7 @@ function DetailPanel({
         <p className="mt-4 text-xs" style={{ color: "var(--cc-muted)" }}>
           {ci ? `CBECS activity: ${ci.cbecsActivity}. ` : ""}
           {naics ? `NAICS ${naics.naics}. ` : ""}
-          {row.reason}
+          {electricReason(row)}
         </p>
 
         <div className="mt-6">
@@ -479,7 +589,7 @@ function PriorityTargetsPage() {
   const [industryFilter, setIndustryFilter] = useState("all");
   const [bandFilter, setBandFilter] = useState("all");
 
-  const intensity = rankedIntensity();
+  const industries = rankedIntensity();
 
   const rows = useMemo(
     () =>
@@ -491,10 +601,25 @@ function PriorityTargetsPage() {
     [data.leaderboard, industryFilter, bandFilter],
   );
 
+  const topPick = rows[0];
+
+  /** Rates restricted to whatever the filters leave visible. */
+  const visibleRates = useMemo(() => {
+    const states = new Set(rows.map((r) => r.state));
+    return data.rates.rates
+      .filter((r) => states.has(r.state))
+      .map((r) => ({ state: r.state, stateName: r.stateName, rateCents: r.rateCents }));
+  }, [data.rates.rates, rows]);
+
+  const bestForState = (state: string) =>
+    rows.find((r) => r.state === state) ?? data.leaderboard.find((r) => r.state === state) ?? null;
+  const bestForIndustry = (key: string) =>
+    rows.find((r) => r.industryKey === key) ??
+    data.leaderboard.find((r) => r.industryKey === key) ??
+    null;
+
   const dataMonth = monthLabel(data.rates.dataMonth);
-  const selectedRate = selected
-    ? data.rates.rates.find((r) => r.state === selected.state)
-    : undefined;
+  const selectedRate = selected ? data.rates.rates.find((r) => r.state === selected.state) : undefined;
 
   return (
     <main className="pipeline-scope min-h-screen">
@@ -546,7 +671,7 @@ function PriorityTargetsPage() {
                 aria-label="Filter by industry"
               >
                 <option value="all">All industries</option>
-                {intensity.map((i) => (
+                {industries.map((i) => (
                   <option key={i.key} value={i.key} className="text-black">
                     {i.label}
                   </option>
@@ -569,79 +694,35 @@ function PriorityTargetsPage() {
           {(data.rates.error || data.density.error) && (
             <div className="glass-panel mt-5 rounded-2xl p-4 text-xs text-amber-200">
               {data.rates.error && <div>EIA retail rates unavailable: {data.rates.error}</div>}
-              {data.density.error && (
-                <div>Census density unavailable: {data.density.error}</div>
-              )}
+              {data.density.error && <div>Census density unavailable: {data.density.error}</div>}
             </div>
           )}
 
-          <div className="mt-6 grid gap-5 lg:grid-cols-[3fr_2fr]">
-            {/* Scatter */}
-            <div className="glass-panel rounded-2xl p-5">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
-                  Rate vs. energy intensity
-                </div>
-                <div className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
-                  {rows.length} combinations
-                </div>
+          <div className="mt-6">
+            {topPick ? (
+              <HeroCard row={topPick} onOpen={() => setSelected(topPick)} />
+            ) : (
+              <div className="glass-panel rounded-3xl p-8 text-sm" style={{ color: "var(--cc-muted)" }}>
+                No industry + state combination matches these filters.
               </div>
-              <div className="mt-3">
-                <ScatterChart
-                  rows={rows}
-                  selectedId={selected ? rowId(selected) : null}
-                  onSelect={setSelected}
-                />
-              </div>
-            </div>
+            )}
+          </div>
 
-            {/* Leaderboard */}
-            <div className="glass-panel rounded-2xl p-5">
-              <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
-                Ranked opportunities
-              </div>
-              <div className="mt-3 max-h-[520px] divide-y divide-white/8 overflow-y-auto pr-1">
-                {rows.length === 0 && (
-                  <p className="py-6 text-sm" style={{ color: "var(--cc-muted)" }}>
-                    No combinations match these filters.
-                  </p>
-                )}
-                {rows.map((row, i) => {
-                  const id = rowId(row);
-                  const active = selected && rowId(selected) === id;
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => setSelected(row)}
-                      className={`grid w-full grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 py-2.5 text-left transition-colors hover:bg-white/6 ${
-                        active ? "bg-white/8" : ""
-                      }`}
-                    >
-                      <span className="text-[11px] tabular-nums" style={{ color: "var(--cc-muted)" }}>
-                        {i + 1}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium">
-                          {row.industryLabel}
-                        </span>
-                        <span
-                          className="block truncate text-[11px]"
-                          style={{ color: "var(--cc-muted)" }}
-                        >
-                          {row.stateName} · {euiFor(row)} kBtu/sq ft ·{" "}
-                          {row.rateCents !== undefined ? `${row.rateCents.toFixed(1)}¢` : "n/a"}
-                        </span>
-                      </span>
-                      <span
-                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums ${bandTone(row.band)}`}
-                      >
-                        {row.score.toFixed(0)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+          <div className="mt-5 grid gap-5 lg:grid-cols-3">
+            <StateRatesPanel
+              rates={visibleRates}
+              onSelect={(state) => {
+                const row = bestForState(state);
+                if (row) setSelected(row);
+              }}
+            />
+            <IntensityPanel
+              onSelect={(key) => {
+                const row = bestForIndustry(key);
+                if (row) setSelected(row);
+              }}
+            />
+            <GridDemandWidget grid={data.grid} />
           </div>
         </section>
       </div>
