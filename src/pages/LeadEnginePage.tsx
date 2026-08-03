@@ -204,14 +204,10 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
     if (enrichments[p.id] || !p.domain) return;
 
     if (demo) {
-      // Demo Mode: pre-saved contacts, no Hunter/Prospeo/Snov call.
-      const sample = DEMO_ENRICHMENTS[p.domain];
-      if (sample) {
-        setEnrichments((prev) => ({ ...prev, [p.id]: sample }));
-        toast.info("Demo Mode — pre-saved contacts, no enrichment credit used.");
-      } else {
-        toast.info("No sample contacts for this company.");
-      }
+      // Demo Mode: fabricated tier-matched contacts, no Hunter/Prospeo/Snov call.
+      const sample = buildDemoEnrichment(p, industry);
+      setEnrichments((prev) => ({ ...prev, [p.id]: sample }));
+      toast.info("Demo Mode — fictional contacts, no enrichment credit used.");
       return;
     }
 
