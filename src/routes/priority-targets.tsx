@@ -741,7 +741,7 @@ function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: st
             className="h-2 w-32 rounded-full"
             style={{
               background:
-                "linear-gradient(90deg, oklch(0.82 0.06 55), oklch(0.72 0.16 185), oklch(0.54 0.26 315))",
+                "linear-gradient(90deg, oklch(0.82 0.06 55), oklch(0.68 0.16 5), oklch(0.54 0.26 315))",
             }}
           />
           <span>{hi === -Infinity ? "" : `${hi.toFixed(1)}¢`}</span>
