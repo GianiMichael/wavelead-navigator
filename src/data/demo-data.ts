@@ -126,9 +126,9 @@ export function buildDemoProspects(
   const used = new Set<string>();
   for (let i = 0; i < count; i++) {
     const seed = base + i * 7919;
-    let name = `${pick(PREFIXES, seed)} ${pick(suffixes, seed + i)}`;
+    let name = `${pick(PREFIXES, seed)} ${pick(suffixes, base + i * 3 + (i % 2))}`;
     let n = 2;
-    while (used.has(name)) name = `${pick(PREFIXES, seed + n)} ${pick(suffixes, seed + i + n++)}`;
+    while (used.has(name)) name = `${pick(PREFIXES, seed + n)} ${pick(suffixes, base + i + n++)}`;
     used.add(name);
 
     const domain = `${slug(name)}.example.com`;
