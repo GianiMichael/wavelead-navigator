@@ -66,7 +66,15 @@ export function loadPipeline(): PipelineRecord[] {
 /** Alias used by the cloud sync layer. */
 export const readPipeline = loadPipeline;
 
+/** Write to the local mirror AND the shared cloud table. */
 export function savePipeline(records: PipelineRecord[]) {
+  writePipelineLocal(records);
+  // Dynamic import keeps this module free of a cycle with cloud-sync.
+  void import("@/lib/cloud-sync").then((m) => m.upsertPipelineRecordsCloud(records));
+}
+
+/** Replace the local mirror only (used when hydrating from the cloud). */
+export function writePipelineLocal(records: PipelineRecord[]) {
   if (!isBrowser()) return;
   try {
     window.localStorage.setItem(KEY, JSON.stringify(records));
@@ -75,14 +83,13 @@ export function savePipeline(records: PipelineRecord[]) {
   }
 }
 
-/** Replace the local mirror with the shared cloud copy. */
-export const writePipelineLocal = savePipeline;
-
-/** Upsert a record keyed by Instantly lead id (local mirror only). */
+/** Upsert a record keyed by Instantly lead id, locally and in the cloud. */
 export function addPipelineRecord(record: PipelineRecord) {
   const existing = loadPipeline().filter((r) => r.leadId !== record.leadId);
-  savePipeline([record, ...existing]);
+  writePipelineLocal([record, ...existing]);
+  void import("@/lib/cloud-sync").then((m) => m.upsertPipelineRecordCloud(record));
 }
+
 
 
 /** Merge synced statuses into stored records; unknown ids keep last-known status. */
