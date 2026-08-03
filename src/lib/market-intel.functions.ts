@@ -1,13 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { ENERGY_INTENSITY } from "@/data/energy-intensity";
-import { fetchCommercialRates, fetchEstablishmentDensity } from "@/lib/market-intel.server";
+import {
+  fetchCommercialRates,
+  fetchEstablishmentDensity,
+  fetchGridDemand,
+} from "@/lib/market-intel.server";
 import { scoreCombination, type ScoreResult } from "@/lib/priority-score";
 
 export const getMarketIntel = createServerFn({ method: "GET" }).handler(async () => {
-  const [ratesResult, densityResult] = await Promise.all([
+  const [ratesResult, densityResult, gridResult] = await Promise.all([
     fetchCommercialRates(),
     fetchEstablishmentDensity(),
+    fetchGridDemand(),
   ]);
 
   const rateByState = new Map(ratesResult.rates.map((r) => [r.state, r]));
