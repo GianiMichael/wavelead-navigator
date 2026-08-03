@@ -24,8 +24,9 @@ My background is in enterprise telecom procurement — managing supplier relatio
 ## Tech stack
 
 - **Frontend/Backend:** Built in Lovable (React + Supabase)
-- **APIs:** Google Places API (New), Hunter.io, Prospeo, Snov.io, Instantly
-- **Data sources:** EIA (retail rates, STEO forecasts), U.S. Census Bureau (County Business Patterns), EIA CBECS energy intensity survey
+- **Development process:** Architected and built in collaboration with Claude (Anthropic) — used for research, prompt engineering, data pipeline design, and debugging throughout the build
+- **APIs:** Google Places API (New), Hunter.io, Prospeo, Snov.io, Instantly, EIA Open Data API (retail rates + STEO forecasts), U.S. Census Bureau API (County Business Patterns)
+- **Static reference data:** EIA CBECS 2018 energy intensity survey
 - **Version control:** GitHub, synced directly from Lovable
 
 ## Screenshots
