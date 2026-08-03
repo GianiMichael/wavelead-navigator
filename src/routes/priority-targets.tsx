@@ -91,7 +91,7 @@ function HeroCard({ row, onOpen }: { row: ScoreResult; onOpen: () => void }) {
     {
       label: "Energy intensity",
       value: euiFor(row) ? `${euiFor(row)}` : "n/a",
-      unit: "kBtu/sq ft",
+      unit: "kBtu/sq ft/year",
     },
     {
       label: "Rate trend",
