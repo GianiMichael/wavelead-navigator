@@ -6,6 +6,7 @@ import { DemoBadge } from "@/components/DemoBadge";
 import { lookupMarket } from "@/data/deregulated-markets";
 import { CBECS_SOURCE, intensityForIndustry, rankedIntensity } from "@/data/energy-intensity";
 import { naicsForIndustry, CBP_VINTAGE } from "@/data/naics-map";
+import { steoRegionForState } from "@/data/steo-regions";
 import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
 
 import { getGridDemand, getMarketIntel } from "@/lib/market-intel.functions";
