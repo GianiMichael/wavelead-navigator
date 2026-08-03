@@ -10,53 +10,33 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PipelineRouteImport } from './routes/pipeline'
-import { Route as PriorityTargetsRouteImport } from './routes/priority-targets'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PipelineRoute = PipelineRouteImport.update({
-  id: '/pipeline',
-  path: '/pipeline',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PriorityTargetsRoute = PriorityTargetsRouteImport.update({
-  id: '/priority-targets',
-  path: '/priority-targets',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/pipeline': typeof PipelineRoute
-  '/priority-targets': typeof PriorityTargetsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/pipeline': typeof PipelineRoute
-  '/priority-targets': typeof PriorityTargetsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/pipeline': typeof PipelineRoute
-  '/priority-targets': typeof PriorityTargetsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/pipeline' | '/priority-targets'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/pipeline' | '/priority-targets'
-  id: '__root__' | '/' | '/pipeline' | '/priority-targets'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  PipelineRoute: typeof PipelineRoute
-  PriorityTargetsRoute: typeof PriorityTargetsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -68,27 +48,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pipeline': {
-      id: '/pipeline'
-      path: '/pipeline'
-      fullPath: '/pipeline'
-      preLoaderRoute: typeof PipelineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/priority-targets': {
-      id: '/priority-targets'
-      path: '/priority-targets'
-      fullPath: '/priority-targets'
-      preLoaderRoute: typeof PriorityTargetsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  PipelineRoute: PipelineRoute,
-  PriorityTargetsRoute: PriorityTargetsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
