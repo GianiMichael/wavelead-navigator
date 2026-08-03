@@ -10,6 +10,8 @@ import { ISO_REGIONS, type IsoRegion } from "@/data/iso-regions";
 
 const BASE = "https://api.gridstatus.io/v1/datasets";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export interface IsoPriceRow {
   iso: string;
   iso_name: string;
@@ -69,7 +71,19 @@ export async function refreshIsoPrices() {
   const apiKey = process.env["GRIDSTATUS_API_KEY"];
   if (!apiKey) return { ok: false as const, error: "GRIDSTATUS_API_KEY is not configured." };
 
-  const rows = await Promise.all(ISO_REGIONS.map((r) => fetchIsoPrice(r, apiKey)));
+  // Free tier throttles concurrent requests (429), so fetch serially with a
+  // short gap and one retry per region.
+  const rows: IsoPriceRow[] = [];
+  for (const region of ISO_REGIONS) {
+    let row = await fetchIsoPrice(region, apiKey);
+    if (row.error?.includes("429")) {
+      await sleep(4000);
+      row = await fetchIsoPrice(region, apiKey);
+    }
+    rows.push(row);
+    await sleep(1500);
+  }
+
   // Only overwrite a cached price when the fetch succeeded — a transient
   // failure must not blank out the last good reading.
   const good = rows.filter((r) => r.price_mwh !== null);
