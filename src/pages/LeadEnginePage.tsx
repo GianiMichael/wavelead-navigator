@@ -152,13 +152,13 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
     setSearching(true);
     setExhausted(false);
     if (demo) {
-      // Demo Mode: serve the frozen sample set, never Google Places.
-      setProspects(DEMO_PROSPECTS);
+      // Demo Mode: a full page of fabricated prospects, never Google Places.
+      setProspects(buildDemoProspects(industry, location, DEMO_PAGE_SIZE));
       setExcludedNoWebsite(0);
       setNextPageToken(undefined);
       setExhausted(true);
       setSearching(false);
-      toast.info("Demo Mode — showing sample prospects, no Places call made.");
+      toast.info("Demo Mode — fictional prospects, no Places call made.");
       return;
     }
     try {
