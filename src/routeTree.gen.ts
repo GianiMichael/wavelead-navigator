@@ -18,6 +18,7 @@ import { Route as AuthenticatedPriorityTargetsRouteImport } from './routes/_auth
 import { Route as DemoAppRouteImport } from './routes/demo/app'
 import { Route as DemoPipelineRouteImport } from './routes/demo/pipeline'
 import { Route as DemoPriorityTargetsRouteImport } from './routes/demo/priority-targets'
+import { Route as ApiPublicHooksRefreshIsoPricesRouteImport } from './routes/api/public/hooks/refresh-iso-prices'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -64,6 +65,12 @@ const DemoPriorityTargetsRoute = DemoPriorityTargetsRouteImport.update({
   path: '/priority-targets',
   getParentRoute: () => DemoRouteRoute,
 } as any)
+const ApiPublicHooksRefreshIsoPricesRoute =
+  ApiPublicHooksRefreshIsoPricesRouteImport.update({
+    id: '/api/public/hooks/refresh-iso-prices',
+    path: '/api/public/hooks/refresh-iso-prices',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/demo/app': typeof DemoAppRoute
   '/demo/pipeline': typeof DemoPipelineRoute
   '/demo/priority-targets': typeof DemoPriorityTargetsRoute
+  '/api/public/hooks/refresh-iso-prices': typeof ApiPublicHooksRefreshIsoPricesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -84,6 +92,7 @@ export interface FileRoutesByTo {
   '/demo/app': typeof DemoAppRoute
   '/demo/pipeline': typeof DemoPipelineRoute
   '/demo/priority-targets': typeof DemoPriorityTargetsRoute
+  '/api/public/hooks/refresh-iso-prices': typeof ApiPublicHooksRefreshIsoPricesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -96,6 +105,7 @@ export interface FileRoutesById {
   '/demo/app': typeof DemoAppRoute
   '/demo/pipeline': typeof DemoPipelineRoute
   '/demo/priority-targets': typeof DemoPriorityTargetsRoute
+  '/api/public/hooks/refresh-iso-prices': typeof ApiPublicHooksRefreshIsoPricesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/demo/app'
     | '/demo/pipeline'
     | '/demo/priority-targets'
+    | '/api/public/hooks/refresh-iso-prices'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/demo/app'
     | '/demo/pipeline'
     | '/demo/priority-targets'
+    | '/api/public/hooks/refresh-iso-prices'
   id:
     | '__root__'
     | '/'
@@ -129,12 +141,14 @@ export interface FileRouteTypes {
     | '/demo/app'
     | '/demo/pipeline'
     | '/demo/priority-targets'
+    | '/api/public/hooks/refresh-iso-prices'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   DemoRouteRoute: typeof DemoRouteRouteWithChildren
+  ApiPublicHooksRefreshIsoPricesRoute: typeof ApiPublicHooksRefreshIsoPricesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -202,6 +216,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoPriorityTargetsRouteImport
       parentRoute: typeof DemoRouteRoute
     }
+    '/api/public/hooks/refresh-iso-prices': {
+      id: '/api/public/hooks/refresh-iso-prices'
+      path: '/api/public/hooks/refresh-iso-prices'
+      fullPath: '/api/public/hooks/refresh-iso-prices'
+      preLoaderRoute: typeof ApiPublicHooksRefreshIsoPricesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -240,6 +261,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   DemoRouteRoute: DemoRouteRouteWithChildren,
+  ApiPublicHooksRefreshIsoPricesRoute: ApiPublicHooksRefreshIsoPricesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
