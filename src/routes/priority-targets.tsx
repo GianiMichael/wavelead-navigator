@@ -930,6 +930,7 @@ function PriorityTargetsPage() {
                 No industry + state combination matches these filters.
               </div>
             )}
+            <RunnersUp rows={rows.slice(1, 11)} onOpen={(r) => setSelected(r)} />
           </div>
 
           <div className="mt-5 grid gap-5 lg:grid-cols-3">
@@ -948,7 +949,21 @@ function PriorityTargetsPage() {
             />
             <GridDemandWidget grid={data.grid} />
           </div>
+
+          <UsRateMap
+            rates={data.rates.rates.map((r) => ({
+              state: r.state,
+              stateName: r.stateName,
+              rateCents: r.rateCents,
+              marketStatus: r.marketStatus,
+            }))}
+            onSelect={(state) => {
+              const row = bestForState(state);
+              if (row) setSelected(row);
+            }}
+          />
         </section>
+
       </div>
 
       {selected && (
