@@ -644,7 +644,165 @@ function DetailPanel({
   );
 }
 
+/* ── Runners-up (ranks 2-11) ────────────────────────────────────── */
+
+function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreResult) => void }) {
+  const [open, setOpen] = useState(false);
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="mt-3">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+        aria-expanded={open}
+      >
+        {open ? "Hide next matches" : `See next ${rows.length} matches`}
+      </button>
+
+      {open && (
+        <ul className="mt-3 space-y-1">
+          {rows.map((r, i) => (
+            <li key={`${r.industryKey}-${r.state}`}>
+              <button
+                onClick={() => onOpen(r)}
+                className="grid w-full grid-cols-[1.4rem_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-xl border border-white/8 bg-white/3 px-3 py-2.5 text-left transition-colors hover:bg-white/8"
+              >
+                <span className="text-[11px] tabular-nums" style={{ color: "var(--cc-muted)" }}>
+                  {i + 2}
+                </span>
+                <span className="min-w-0 truncate text-sm">
+                  {r.industryLabel} <span style={{ color: "var(--cc-muted)" }}>· {r.stateName}</span>
+                </span>
+                <span className="text-xs tabular-nums" style={{ color: "var(--cc-muted)" }}>
+                  {r.rateCents !== undefined ? `${r.rateCents.toFixed(1)}¢` : "—"} ·{" "}
+                  {euiFor(r) ? `${euiFor(r)} kBtu/sq ft/year` : "—"}
+                </span>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${bandTone(r.band)}`}
+                >
+                  {r.score.toFixed(0)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ── U.S. rate choropleth ───────────────────────────────────────── */
+
+interface MapRate {
+  state: string;
+  stateName: string;
+  rateCents: number;
+  marketStatus: "deregulated" | "partial";
+}
+
+function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: string) => void }) {
+  const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null);
+
+  const byName = useMemo(() => new Map(rates.map((r) => [r.stateName.toLowerCase(), r])), [rates]);
+  const values = rates.map((r) => r.rateCents);
+  const lo = Math.min(...values, Infinity);
+  const hi = Math.max(...values, -Infinity);
+
+  const fill = (r?: MapRate) => {
+    if (!r) return "rgba(255,255,255,0.05)";
+    const t = hi > lo ? (r.rateCents - lo) / (hi - lo) : 0.5;
+    const l = 0.82 - t * 0.28;
+    const c = 0.06 + t * 0.2;
+    const hue = 55 + t * 260;
+    return `oklch(${l.toFixed(3)} ${c.toFixed(3)} ${hue.toFixed(0)})`;
+  };
+
+  const hovered = hover ? byName.get(hover.name.toLowerCase()) : undefined;
+  const hoveredMarket = hover ? lookupMarket(hover.name) : undefined;
+
+  return (
+    <section className="glass-panel mt-6 rounded-3xl p-6 sm:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
+            Map — commercial electricity rate by state
+          </div>
+          <h2 className="headline mt-1 text-xl">
+            Where power costs the most in <span className="grad-text">open markets</span>
+          </h2>
+        </div>
+        <div className="flex items-center gap-3 text-[11px]" style={{ color: "var(--cc-muted)" }}>
+          <span>{lo === Infinity ? "" : `${lo.toFixed(1)}¢`}</span>
+          <span
+            className="h-2 w-32 rounded-full"
+            style={{
+              background:
+                "linear-gradient(90deg, oklch(0.82 0.06 55), oklch(0.72 0.16 185), oklch(0.54 0.26 315))",
+            }}
+          />
+          <span>{hi === -Infinity ? "" : `${hi.toFixed(1)}¢`}</span>
+          <span className="ml-2 flex items-center gap-1.5">
+            <span className="inline-block h-2 w-4 rounded-sm bg-white/8" /> not deregulated
+          </span>
+        </div>
+      </div>
+
+      <div className="relative mt-5">
+        <svg
+          viewBox={`0 0 ${US_MAP_VIEWBOX.width} ${US_MAP_VIEWBOX.height}`}
+          className="w-full"
+          role="img"
+          aria-label="U.S. commercial electricity rates by state"
+        >
+          {US_STATE_SHAPES.map((s) => {
+            const r = byName.get(s.name.toLowerCase());
+            const active = Boolean(r);
+            return (
+              <path
+                key={s.fips}
+                d={s.d}
+                fill={fill(r)}
+                fillOpacity={active ? (hover?.name === s.name ? 1 : 0.92) : 1}
+                stroke={active ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.10)"}
+                strokeWidth={hover?.name === s.name ? 2 : 0.8}
+                style={{ cursor: active ? "pointer" : "default" }}
+                onMouseMove={(e) => {
+                  const box = e.currentTarget.ownerSVGElement?.getBoundingClientRect();
+                  if (!box) return;
+                  setHover({ name: s.name, x: e.clientX - box.left, y: e.clientY - box.top });
+                }}
+                onMouseLeave={() => setHover((h) => (h?.name === s.name ? null : h))}
+                onClick={() => r && onSelect(r.state)}
+              />
+            );
+          })}
+        </svg>
+
+        {hover && (
+          <div
+            className="pointer-events-none absolute z-10 rounded-xl border border-white/15 bg-black/85 px-3 py-2 text-xs whitespace-nowrap backdrop-blur"
+            style={{ left: hover.x, top: hover.y - 12, transform: "translate(-50%, -100%)" }}
+          >
+            <div className="font-medium">{hover.name}</div>
+            <div style={{ color: "var(--cc-muted)" }}>
+              {hovered
+                ? `${hovered.rateCents.toFixed(2)}¢/kWh · ${
+                    hovered.marketStatus === "partial" ? "Partially deregulated" : "Deregulated"
+                  }`
+                : hoveredMarket?.status === "partial"
+                  ? "Partially deregulated · no rate data"
+                  : "Regulated market — not actionable"}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /* ── Page ───────────────────────────────────────────────────────── */
+
 
 function PriorityTargetsPage() {
   const { data } = useSuspenseQuery(intelQuery);
