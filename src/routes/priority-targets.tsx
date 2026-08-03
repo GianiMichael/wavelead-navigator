@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 
+import { lookupMarket } from "@/data/deregulated-markets";
 import { CBECS_SOURCE, intensityForIndustry, rankedIntensity } from "@/data/energy-intensity";
 import { naicsForIndustry, CBP_VINTAGE } from "@/data/naics-map";
+import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
+
 import { getMarketIntel } from "@/lib/market-intel.functions";
 import { bandLabel, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
 
