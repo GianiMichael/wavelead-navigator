@@ -278,9 +278,10 @@ export async function fetchGridDemand(): Promise<GridDemandResult> {
       const history = (json.response?.data ?? [])
         .map((r) => ({
           period: r.period,
-          mwh: typeof r.value === "string" ? Number.parseFloat(r.value) : r.value,
+          mw: typeof r.value === "string" ? Number.parseFloat(r.value) : r.value,
         }))
-        .filter((p) => Number.isFinite(p.mwh))
+        .filter((p) => Number.isFinite(p.mw))
+
         .sort((a, b) => a.period.localeCompare(b.period));
 
       const latest = history[history.length - 1];
