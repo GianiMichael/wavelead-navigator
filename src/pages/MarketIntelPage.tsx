@@ -256,44 +256,88 @@ function hoursAgo(period: string): number | null {
   return Math.max(0, Math.round((Date.now() - t) / 3_600_000));
 }
 
-function hourLabel(period: string) {
-  const m = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
-  if (!m) return period;
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4])));
-  // Pinned to UTC so server-rendered and client-rendered labels always match.
-  return d.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "UTC" });
+const GRID_RANGES = ["24H", "48H", "1W", "1M", "1Y"] as const;
+type GridRange = (typeof GRID_RANGES)[number];
+
+const RANGE_BLURB: Record<GridRange, string> = {
+  "24H": "last 24 hours · hourly",
+  "48H": "last 48 hours · hourly",
+  "1W": "last 7 days · daily average",
+  "1M": "last 30 days · daily average",
+  "1Y": "last 12 months · monthly average",
+};
+
+function parsePeriod(period: string) {
+  const hm = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
+  if (hm)
+    return new Date(Date.UTC(Number(hm[1]), Number(hm[2]) - 1, Number(hm[3]), Number(hm[4])));
+  const dm = period.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dm) return new Date(Date.UTC(Number(dm[1]), Number(dm[2]) - 1, Number(dm[3])));
+  const mm = period.match(/^(\d{4})-(\d{2})$/);
+  if (mm) return new Date(Date.UTC(Number(mm[1]), Number(mm[2]) - 1, 1));
+  return null;
 }
 
-function hourStamp(period: string) {
-  const m = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
-  if (!m) return period;
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4])));
-  return `${d.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    timeZone: "UTC",
-  })} UTC`;
+/** Axis tick label, granularity-aware. Pinned to UTC to avoid hydration drift. */
+function gridTickLabel(period: string, granularity: string) {
+  const d = parsePeriod(period);
+  if (!d) return period;
+  if (granularity === "hour")
+    return d.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "UTC" });
+  if (granularity === "day")
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
 }
 
+/** Tooltip stamp, granularity-aware. */
+function gridStamp(period: string, granularity: string) {
+  const d = parsePeriod(period);
+  if (!d) return period;
+  if (granularity === "hour")
+    return `${d.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      timeZone: "UTC",
+    })} UTC`;
+  if (granularity === "day")
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
 
-function GridDemandWidget({
-  grid,
-}: {
-  grid: {
-    latest?: { period: string; mw: number };
-    history: { period: string; mw: number }[];
-    regionName: string;
-    error?: string;
-  };
-}) {
+type GridData = {
+  latest?: { period: string; mw: number };
+  history: { period: string; mw: number }[];
+  granularity?: string;
+  regionName: string;
+  error?: string;
+};
+
+function GridDemandWidget({ grid, demo = false }: { grid: GridData; demo?: boolean }) {
+  const [range, setRange] = useState<GridRange>("24H");
   const [age, setAge] = useState<number | null>(null);
   const [hover, setHover] = useState<number | null>(null);
-  useEffect(() => {
-    if (grid.latest) setAge(hoursAgo(grid.latest.period));
-  }, [grid.latest]);
 
-  const pts = grid.history;
+  const { data: ranged, isFetching } = useQuery({
+    queryKey: ["grid-demand", range],
+    queryFn: () => getGridDemand({ data: { range } }),
+    staleTime: 60 * 60 * 1000,
+    enabled: !demo && range !== "24H",
+  });
+
+  const active: GridData = range === "24H" || !ranged ? grid : ranged;
+  const granularity = active.granularity ?? "hour";
+
+  useEffect(() => {
+    if (active.latest) setAge(hoursAgo(active.latest.period));
+  }, [active.latest]);
+
+  const pts = active.history;
   const w = 300;
   const h = 130;
   const pad = { l: 44, r: 8, t: 10, b: 24 };
@@ -304,7 +348,8 @@ function GridDemandWidget({
   const hi = Math.max(...values, -Infinity) * 1.02;
   const x = (i: number) => pad.l + (pts.length > 1 ? (i / (pts.length - 1)) * plotW : plotW / 2);
   const y = (v: number) => pad.t + plotH - ((v - lo) / (hi - lo || 1)) * plotH;
-  const path = pts.length > 1 ? pts.map((p, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(p.mw)}`).join(" ") : "";
+  const path =
+    pts.length > 1 ? pts.map((p, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(p.mw)}`).join(" ") : "";
   const xLabelEvery = Math.max(1, Math.ceil(pts.length / 4));
 
   return (
@@ -319,25 +364,52 @@ function GridDemandWidget({
         </span>
       </div>
 
-      {grid.error || !grid.latest ? (
+      <div className="mt-3 flex gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
+        {GRID_RANGES.map((r) => (
+          <button
+            key={r}
+            type="button"
+            onClick={() => {
+              setRange(r);
+              setHover(null);
+            }}
+            aria-pressed={range === r}
+            className={`flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition ${
+              range === r ? "bg-white/15 text-white" : "text-white/55 hover:text-white/85"
+            }`}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+
+      {active.error || !active.latest ? (
         <p className="mt-4 text-xs text-amber-200">
-          Grid demand unavailable{grid.error ? `: ${grid.error}` : "."}
+          {isFetching
+            ? "Loading grid demand…"
+            : `Grid demand unavailable${active.error ? `: ${active.error}` : "."}`}
         </p>
       ) : (
         <>
           <div className="mt-3 text-3xl font-semibold tabular-nums">
-            {Math.round(grid.latest.mw).toLocaleString()}
+            {Math.round(active.latest.mw).toLocaleString()}
             <span className="ml-1.5 text-sm font-normal" style={{ color: "var(--cc-muted)" }}>
               MW
             </span>
           </div>
           <div className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
-            {grid.regionName} · last 24 hours
+            {active.regionName} · {RANGE_BLURB[range]}
+            {isFetching ? " · updating…" : ""}
           </div>
 
           {path && (
             <div className="relative mt-3">
-              <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="24-hour grid demand">
+              <svg
+                viewBox={`0 0 ${w} ${h}`}
+                className="w-full"
+                role="img"
+                aria-label={`Grid demand, ${RANGE_BLURB[range]}`}
+              >
                 {[0, 1, 2].map((i) => {
                   const v = lo + ((hi - lo) / 2) * i;
                   return (
@@ -374,7 +446,7 @@ function GridDemandWidget({
                     />
                     {i % xLabelEvery === 0 && (
                       <text x={x(i)} y={h - 8} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.5)">
-                        {hourLabel(p.period)}
+                        {gridTickLabel(p.period, granularity)}
                       </text>
                     )}
                   </g>
@@ -386,21 +458,28 @@ function GridDemandWidget({
                   className="pointer-events-none absolute -top-2 rounded-lg border border-white/15 bg-black/85 px-2 py-1 text-[10px] whitespace-nowrap backdrop-blur"
                   style={{ left: `${(x(hover) / w) * 100}%`, transform: "translateX(-50%)" }}
                 >
-                  {hourStamp(pts[hover]!.period)}: {Math.round(pts[hover]!.mw).toLocaleString()} MW
+                  {gridStamp(pts[hover]!.period, granularity)}:{" "}
+                  {Math.round(pts[hover]!.mw).toLocaleString()} MW
                 </div>
               )}
             </div>
           )}
 
           <p className="mt-3 text-[11px]" style={{ color: "var(--cc-muted)" }}>
-            Total grid load (power), updated hourly — not a customer demand charge. Source: EIA-930
-            Hourly Electric Grid Monitor.
+            Total grid load (power), updated hourly.{" "}
+            {granularity === "hour"
+              ? "Each point is one hour."
+              : granularity === "day"
+                ? "Each point averages one day."
+                : "Each point averages one calendar month."}{" "}
+            Source: EIA-930 Hourly Electric Grid Monitor (data from 2019).
           </p>
         </>
       )}
     </div>
   );
 }
+
 
 
 /* ── Rate trend line chart with axes + tooltips ─────────────────── */
