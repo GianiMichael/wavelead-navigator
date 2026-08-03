@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as DemoRouteRouteImport } from './routes/demo/route'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedPriorityTargetsRouteImport } from './routes/_authenticated/priority-targets'
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoRouteRoute = DemoRouteRouteImport.update({
+  id: '/demo',
+  path: '/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
@@ -43,12 +49,14 @@ const AuthenticatedPriorityTargetsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/demo': typeof DemoRouteRoute
   '/app': typeof AuthenticatedAppRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/priority-targets': typeof AuthenticatedPriorityTargetsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/demo': typeof DemoRouteRoute
   '/app': typeof AuthenticatedAppRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/priority-targets': typeof AuthenticatedPriorityTargetsRoute
@@ -57,19 +65,21 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/demo': typeof DemoRouteRoute
   '/_authenticated/app': typeof AuthenticatedAppRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/priority-targets': typeof AuthenticatedPriorityTargetsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/pipeline' | '/priority-targets'
+  fullPaths: '/' | '/demo' | '/app' | '/pipeline' | '/priority-targets'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app' | '/pipeline' | '/priority-targets'
+  to: '/' | '/demo' | '/app' | '/pipeline' | '/priority-targets'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/demo'
     | '/_authenticated/app'
     | '/_authenticated/pipeline'
     | '/_authenticated/priority-targets'
@@ -78,6 +88,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  DemoRouteRoute: typeof DemoRouteRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -94,6 +105,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/app': {
@@ -138,6 +156,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  DemoRouteRoute: DemoRouteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
