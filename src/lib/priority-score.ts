@@ -113,9 +113,10 @@ export function scoreCombination(
 function buildReason(input: ScoreInputs, densityFactor: number): string {
   const parts: string[] = [];
 
-  if (input.intensity >= 8) parts.push("High energy intensity");
-  else if (input.intensity >= 5.5) parts.push("Moderate energy intensity");
-  else parts.push("Lower energy intensity");
+  const eui = input.siteEui !== undefined ? ` (${input.siteEui} kBtu/sq ft)` : "";
+  if (input.intensity >= 8) parts.push(`High energy intensity${eui}`);
+  else if (input.intensity >= 5.5) parts.push(`Moderate energy intensity${eui}`);
+  else parts.push(`Lower energy intensity${eui}`);
 
   if (input.rateCents !== undefined) {
     parts.push(`${input.rateCents.toFixed(1)}¢/kWh commercial rate`);
