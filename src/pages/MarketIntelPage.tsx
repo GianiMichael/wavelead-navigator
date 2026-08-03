@@ -1139,6 +1139,8 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
         <DetailPanel
           row={selected}
           {...(selectedRate ? { rate: selectedRate } : {})}
+          {...(data.steo ? { steo: data.steo } : {})}
+
           onClose={() => setSelected(null)}
         />
       )}
