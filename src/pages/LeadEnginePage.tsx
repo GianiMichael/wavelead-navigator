@@ -108,6 +108,13 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
     retry: false,
   });
 
+  // Preselect a campaign so the send step is never a dead end.
+  useEffect(() => {
+    const first = campaigns.data?.[0]?.id;
+    if (!campaignId && first) setCampaignId(first);
+  }, [campaigns.data, campaignId]);
+
+
   const hiddenContacted = useMemo(
     () =>
       prospects.filter(
