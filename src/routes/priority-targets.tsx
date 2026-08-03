@@ -567,7 +567,7 @@ function DetailPanel({
       label: "Commercial electricity rate",
       value: row.rateCents !== undefined ? `${row.rateCents.toFixed(2)}¢/kWh` : "n/a",
     },
-    { label: "Energy intensity", value: euiFor(row) ? `${euiFor(row)} kBtu/sq ft` : "n/a" },
+    { label: "Energy intensity", value: euiFor(row) ? `${euiFor(row)} kBtu/sq ft/year` : "n/a" },
     {
       label: "Rate trend",
       value: row.rateTrendPct !== undefined ? `${(row.rateTrendPct * 100).toFixed(1)}%` : "n/a",
