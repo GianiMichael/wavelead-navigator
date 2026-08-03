@@ -15,6 +15,7 @@ import { Route as DemoRouteRouteImport } from './routes/demo/route'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedPriorityTargetsRouteImport } from './routes/_authenticated/priority-targets'
+import { Route as DemoAppRouteImport } from './routes/demo/app'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,35 +47,44 @@ const AuthenticatedPriorityTargetsRoute =
     path: '/priority-targets',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const DemoAppRoute = DemoAppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => DemoRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/demo': typeof DemoRouteRoute
+  '/demo': typeof DemoRouteRouteWithChildren
   '/app': typeof AuthenticatedAppRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/priority-targets': typeof AuthenticatedPriorityTargetsRoute
+  '/demo/app': typeof DemoAppRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/demo': typeof DemoRouteRoute
+  '/demo': typeof DemoRouteRouteWithChildren
   '/app': typeof AuthenticatedAppRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/priority-targets': typeof AuthenticatedPriorityTargetsRoute
+  '/demo/app': typeof DemoAppRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/demo': typeof DemoRouteRoute
+  '/demo': typeof DemoRouteRouteWithChildren
   '/_authenticated/app': typeof AuthenticatedAppRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/priority-targets': typeof AuthenticatedPriorityTargetsRoute
+  '/demo/app': typeof DemoAppRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/demo' | '/app' | '/pipeline' | '/priority-targets'
+  fullPaths:
+    '/' | '/demo' | '/app' | '/pipeline' | '/priority-targets' | '/demo/app'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/demo' | '/app' | '/pipeline' | '/priority-targets'
+  to: '/' | '/demo' | '/app' | '/pipeline' | '/priority-targets' | '/demo/app'
   id:
     | '__root__'
     | '/'
@@ -83,12 +93,13 @@ export interface FileRouteTypes {
     | '/_authenticated/app'
     | '/_authenticated/pipeline'
     | '/_authenticated/priority-targets'
+    | '/demo/app'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  DemoRouteRoute: typeof DemoRouteRoute
+  DemoRouteRoute: typeof DemoRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -135,6 +146,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPriorityTargetsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/demo/app': {
+      id: '/demo/app'
+      path: '/app'
+      fullPath: '/demo/app'
+      preLoaderRoute: typeof DemoAppRouteImport
+      parentRoute: typeof DemoRouteRoute
+    }
   }
 }
 
@@ -153,10 +171,22 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface DemoRouteRouteChildren {
+  DemoAppRoute: typeof DemoAppRoute
+}
+
+const DemoRouteRouteChildren: DemoRouteRouteChildren = {
+  DemoAppRoute: DemoAppRoute,
+}
+
+const DemoRouteRouteWithChildren = DemoRouteRoute._addFileChildren(
+  DemoRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  DemoRouteRoute: DemoRouteRoute,
+  DemoRouteRoute: DemoRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
