@@ -334,8 +334,8 @@ function GridDemandWidget({ grid }: { grid: GridData }) {
   const granularity = active.granularity ?? "hour";
 
   useEffect(() => {
-    if (active.latest) setAge(hoursAgo(active.latest.period));
-  }, [active.latest]);
+    if (grid.latest) setAge(hoursAgo(grid.latest.period));
+  }, [grid.latest]);
 
   const pts = active.history;
   const w = 300;
@@ -383,22 +383,22 @@ function GridDemandWidget({ grid }: { grid: GridData }) {
         ))}
       </div>
 
-      {active.error || !active.latest ? (
+      {grid.error || !grid.latest ? (
         <p className="mt-4 text-xs text-amber-200">
           {isFetching
             ? "Loading grid demand…"
-            : `Grid demand unavailable${active.error ? `: ${active.error}` : "."}`}
+            : `Grid demand unavailable${grid.error ? `: ${grid.error}` : "."}`}
         </p>
       ) : (
         <>
           <div className="mt-3 text-3xl font-semibold tabular-nums">
-            {Math.round(active.latest.mw).toLocaleString()}
+            {Math.round(grid.latest.mw).toLocaleString()}
             <span className="ml-1.5 text-sm font-normal" style={{ color: "var(--cc-muted)" }}>
               MW
             </span>
           </div>
           <div className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
-            {active.regionName} · {RANGE_BLURB[range]}
+            {grid.regionName} · Current reading
             {isFetching ? " · updating…" : ""}
           </div>
 
@@ -472,7 +472,7 @@ function GridDemandWidget({ grid }: { grid: GridData }) {
               : granularity === "day"
                 ? "Each point averages one day."
                 : "Each point averages one calendar month."}{" "}
-            Source: EIA-930 Hourly Electric Grid Monitor (data from 2019).
+            Source: EIA-930 Hourly Electric Grid Monitor — live U.S. power grid data since 2019.
           </p>
         </>
       )}
