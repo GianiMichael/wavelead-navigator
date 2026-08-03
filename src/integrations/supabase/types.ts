@@ -14,7 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      enrichment_cache: {
+        Row: {
+          cached_at: string
+          domain: string
+          payload: Json
+        }
+        Insert: {
+          cached_at?: string
+          domain: string
+          payload: Json
+        }
+        Update: {
+          cached_at?: string
+          domain?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
+      pipeline_records: {
+        Row: {
+          business_name: string
+          campaign_id: string
+          campaign_name: string
+          contact_name: string
+          created_at: string
+          date_added: string
+          deregulated: string
+          domain: string | null
+          email: string
+          energy_priority: string
+          industry: string
+          industry_label: string
+          last_synced: string | null
+          lead_id: string
+          status: string
+          tier: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          business_name?: string
+          campaign_id?: string
+          campaign_name?: string
+          contact_name?: string
+          created_at?: string
+          date_added?: string
+          deregulated?: string
+          domain?: string | null
+          email?: string
+          energy_priority?: string
+          industry?: string
+          industry_label?: string
+          last_synced?: string | null
+          lead_id: string
+          status?: string
+          tier?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          business_name?: string
+          campaign_id?: string
+          campaign_name?: string
+          contact_name?: string
+          created_at?: string
+          date_added?: string
+          deregulated?: string
+          domain?: string | null
+          email?: string
+          energy_priority?: string
+          industry?: string
+          industry_label?: string
+          last_synced?: string | null
+          lead_id?: string
+          status?: string
+          tier?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
