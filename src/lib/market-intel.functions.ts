@@ -5,6 +5,7 @@ import {
   fetchCommercialRates,
   fetchEstablishmentDensity,
   fetchGridDemand,
+  isGridRange,
 } from "@/lib/market-intel.server";
 import { scoreCombination, type ScoreResult } from "@/lib/priority-score";
 
@@ -51,3 +52,9 @@ export const getMarketIntel = createServerFn({ method: "GET" }).handler(async ()
     generatedAt: new Date().toISOString(),
   };
 });
+
+export const getGridDemand = createServerFn({ method: "GET" })
+  .inputValidator((input: { range?: string }) => ({
+    range: isGridRange(input?.range) ? input.range : ("24H" as const),
+  }))
+  .handler(async ({ data }) => fetchGridDemand(data.range));
