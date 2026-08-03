@@ -18,7 +18,14 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { StatBlock } from "@/components/StatBlock";
 import { ProspectTable } from "@/components/ProspectTable";
-import { INDUSTRY_OPTIONS, rankAllMatches, matchDecisionMaker } from "@/lib/tier-matching";
+import {
+  INDUSTRY_OPTIONS,
+  rankAllMatches,
+  matchDecisionMaker,
+  tierLabel,
+  tierShortLabel,
+} from "@/lib/tier-matching";
+
 import { MARKETS } from "@/data/deregulated-markets";
 import { energyPriorityForIndustry } from "@/lib/energy-priority";
 import { addPipelineRecord, contactedDomains } from "@/lib/pipeline-store";
