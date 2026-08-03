@@ -10,6 +10,8 @@ import { ISO_REGIONS, type IsoRegion } from "@/data/iso-regions";
 
 const BASE = "https://api.gridstatus.io/v1/datasets";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export interface IsoPriceRow {
   iso: string;
   iso_name: string;
