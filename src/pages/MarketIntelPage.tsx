@@ -686,12 +686,26 @@ function RateHistoryChart({
 function DetailPanel({
   row,
   rate,
+  steo,
   onClose,
 }: {
   row: ScoreResult;
   rate?: { stateName: string; trendPct?: number; history: { period: string; rateCents: number }[] };
+  steo?: {
+    regions: Record<string, { region: string; regionName: string; series: { period: string; rateCents: number }[] }>;
+    vintage: string;
+  };
   onClose: () => void;
 }) {
+  const region = steoRegionForState(row.state);
+  const forecast = useMemo(() => {
+    if (!rate || !region || !steo) return [];
+    const series = steo.regions[region.code]?.series ?? [];
+    const lastHist = rate.history[rate.history.length - 1]?.period ?? "";
+    return series.filter((p) => p.period > lastHist).slice(0, 6);
+  }, [rate, region, steo]);
+
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
