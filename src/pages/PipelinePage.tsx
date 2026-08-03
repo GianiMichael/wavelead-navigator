@@ -16,6 +16,7 @@ import {
 import { INDUSTRY_OPTIONS } from "@/lib/tier-matching";
 import { getCachedEnrichment } from "@/lib/enrichment-cache";
 import { Input } from "@/components/ui/input";
+import { DemoBadge } from "@/components/DemoBadge";
 import { DEMO_PIPELINE } from "@/data/demo-data";
 
 
@@ -172,6 +173,7 @@ export function PipelinePage({ demo = false }: { demo?: boolean }) {
               </span>
             </div>
             <nav className="flex items-center gap-5 text-sm">
+              {demo && <DemoBadge />}
               <Link
                 to={demo ? "/demo/app" : "/app"}
                 className="text-white/60 transition-colors hover:text-white"
