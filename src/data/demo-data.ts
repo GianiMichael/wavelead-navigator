@@ -2,19 +2,23 @@ import type { EnrichmentResult, Prospect } from "@/lib/types";
 import type { PipelineRecord } from "@/lib/pipeline-store";
 
 /**
- * Frozen sample data used by Demo Mode. Sourced from real past runs so the
- * demo looks like the product, but no live API is ever called for these.
+ * Frozen sample data used by Demo Mode.
+ *
+ * Every company, address, person, and email below is entirely fabricated and
+ * does not correspond to any real business or individual. Domains use the
+ * reserved `.example.com` suffix (RFC 2606) so nothing here can ever resolve
+ * to, or be confused with, a live company. No API is called for this data.
  */
 export const DEMO_PROSPECTS: Prospect[] = [
   {
-    id: "demo-houston-methodist",
-    name: "Houston Methodist Hospital",
-    address: "6565 Fannin St, Houston, TX 77030",
+    id: "demo-bayou-crest",
+    name: "Bayou Crest Regional Medical Center",
+    address: "1420 Larkspur Way, Houston, TX 77099",
     category: "Hospital",
     state: "TX",
-    website: "https://www.houstonmethodist.org",
-    domain: "houstonmethodist.org",
-    phone: "(713) 790-3311",
+    website: "https://www.bayoucrestmedical.example.com",
+    domain: "bayoucrestmedical.example.com",
+    phone: "(713) 555-0142",
     rating: 4.3,
     marketStatus: "deregulated",
     marketNote: "ERCOT retail choice — competitive supply available.",
@@ -28,27 +32,27 @@ export const DEMO_PROSPECTS: Prospect[] = [
     },
   },
   {
-    id: "demo-clearwater-express",
-    name: "ClearWater Express Wash",
-    address: "3410 W Loop 250 N, Midland, TX 79707",
+    id: "demo-sunrail-wash",
+    name: "SunRail Express Wash",
+    address: "3410 Cottonmill Rd, Midland, TX 79707",
     category: "Car wash",
     state: "TX",
-    website: "https://www.clearwaterexpresswash.com",
-    domain: "clearwaterexpresswash.com",
-    phone: "(432) 400-1180",
+    website: "https://www.sunrailexpresswash.example.com",
+    domain: "sunrailexpresswash.example.com",
+    phone: "(432) 555-0188",
     rating: 4.7,
     marketStatus: "deregulated",
     marketNote: "ERCOT retail choice — competitive supply available.",
   },
   {
-    id: "demo-edsal-manufacturing",
-    name: "Edsal Manufacturing Co.",
-    address: "4400 S Packers Ave, Chicago, IL 60609",
+    id: "demo-ironvale-works",
+    name: "Ironvale Precision Works",
+    address: "8800 Harlow Ave, Chicago, IL 60632",
     category: "Manufacturer",
     state: "IL",
-    website: "https://www.edsal.com",
-    domain: "edsal.com",
-    phone: "(773) 927-7000",
+    website: "https://www.ironvaleworks.example.com",
+    domain: "ironvaleworks.example.com",
+    phone: "(773) 555-0119",
     rating: 4.1,
     marketStatus: "deregulated",
     marketNote: "Illinois retail choice for commercial accounts.",
@@ -63,85 +67,85 @@ export const DEMO_PROSPECTS: Prospect[] = [
 ];
 
 export const DEMO_ENRICHMENTS: Record<string, EnrichmentResult> = {
-  "houstonmethodist.org": {
-    domain: "houstonmethodist.org",
+  "bayoucrestmedical.example.com": {
+    domain: "bayoucrestmedical.example.com",
     provider: "hunter",
     attempted: ["hunter"],
     contacts: [
       {
         name: "Marcus Whitfield",
         title: "Director of Facilities Operations",
-        email: "m.whitfield@houstonmethodist.org",
+        email: "m.whitfield@bayoucrestmedical.example.com",
         confidence: 94,
         provider: "hunter",
       },
       {
         name: "Dana Alvarez",
         title: "Energy Manager",
-        email: "d.alvarez@houstonmethodist.org",
+        email: "d.alvarez@bayoucrestmedical.example.com",
         confidence: 88,
         provider: "hunter",
       },
       {
         name: "Priya Raman",
         title: "VP Procurement",
-        email: "p.raman@houstonmethodist.org",
+        email: "p.raman@bayoucrestmedical.example.com",
         confidence: 76,
         provider: "hunter",
       },
       {
         name: "Kevin Doss",
         title: "Marketing Coordinator",
-        email: "k.doss@houstonmethodist.org",
+        email: "k.doss@bayoucrestmedical.example.com",
         confidence: 62,
         provider: "hunter",
       },
     ],
   },
-  "clearwaterexpresswash.com": {
-    domain: "clearwaterexpresswash.com",
+  "sunrailexpresswash.example.com": {
+    domain: "sunrailexpresswash.example.com",
     provider: "prospeo",
     attempted: ["hunter", "prospeo"],
     contacts: [
       {
         name: "Ryan Castillo",
         title: "Owner / Operator",
-        email: "ryan@clearwaterexpresswash.com",
+        email: "ryan@sunrailexpresswash.example.com",
         confidence: 91,
         provider: "prospeo",
       },
       {
         name: "Tasha Boone",
         title: "Site Manager",
-        email: "tasha@clearwaterexpresswash.com",
+        email: "tasha@sunrailexpresswash.example.com",
         confidence: 79,
         provider: "prospeo",
       },
     ],
   },
-  "edsal.com": {
-    domain: "edsal.com",
+  "ironvaleworks.example.com": {
+    domain: "ironvaleworks.example.com",
     provider: "snov",
     attempted: ["hunter", "prospeo", "snov"],
     contacts: [
       {
         name: "Gary Lindqvist",
         title: "Plant Manager",
-        email: "g.lindqvist@edsal.com",
+        email: "g.lindqvist@ironvaleworks.example.com",
         confidence: 90,
         provider: "snov",
       },
       {
         name: "Sandra Okafor",
         title: "Director of Operations",
-        email: "s.okafor@edsal.com",
+        email: "s.okafor@ironvaleworks.example.com",
         confidence: 84,
         provider: "snov",
       },
       {
         name: "Bill Trainor",
         title: "Maintenance Supervisor",
-        email: "b.trainor@edsal.com",
+        email: "b.trainor@ironvaleworks.example.com",
         confidence: 71,
         provider: "snov",
       },
@@ -157,11 +161,11 @@ export const DEMO_CAMPAIGNS = [
 export const DEMO_PIPELINE: PipelineRecord[] = [
   {
     leadId: "demo-lead-1",
-    businessName: "Houston Methodist Hospital",
+    businessName: "Bayou Crest Regional Medical Center",
     contactName: "Marcus Whitfield",
     title: "Director of Facilities Operations",
-    email: "m.whitfield@houstonmethodist.org",
-    domain: "houstonmethodist.org",
+    email: "m.whitfield@bayoucrestmedical.example.com",
+    domain: "bayoucrestmedical.example.com",
     tier: "Tier 1",
     industry: "healthcare",
     industryLabel: "Healthcare",
@@ -175,11 +179,11 @@ export const DEMO_PIPELINE: PipelineRecord[] = [
   },
   {
     leadId: "demo-lead-2",
-    businessName: "ClearWater Express Wash",
+    businessName: "SunRail Express Wash",
     contactName: "Ryan Castillo",
     title: "Owner / Operator",
-    email: "ryan@clearwaterexpresswash.com",
-    domain: "clearwaterexpresswash.com",
+    email: "ryan@sunrailexpresswash.example.com",
+    domain: "sunrailexpresswash.example.com",
     tier: "Tier 1",
     industry: "retail",
     industryLabel: "Retail",
@@ -193,11 +197,11 @@ export const DEMO_PIPELINE: PipelineRecord[] = [
   },
   {
     leadId: "demo-lead-3",
-    businessName: "Edsal Manufacturing Co.",
+    businessName: "Ironvale Precision Works",
     contactName: "Gary Lindqvist",
     title: "Plant Manager",
-    email: "g.lindqvist@edsal.com",
-    domain: "edsal.com",
+    email: "g.lindqvist@ironvaleworks.example.com",
+    domain: "ironvaleworks.example.com",
     tier: "Tier 1",
     industry: "manufacturing",
     industryLabel: "Manufacturing",
@@ -211,11 +215,11 @@ export const DEMO_PIPELINE: PipelineRecord[] = [
   },
   {
     leadId: "demo-lead-4",
-    businessName: "Edsal Manufacturing Co.",
+    businessName: "Ironvale Precision Works",
     contactName: "Sandra Okafor",
     title: "Director of Operations",
-    email: "s.okafor@edsal.com",
-    domain: "edsal.com",
+    email: "s.okafor@ironvaleworks.example.com",
+    domain: "ironvaleworks.example.com",
     tier: "Tier 2",
     industry: "manufacturing",
     industryLabel: "Manufacturing",
