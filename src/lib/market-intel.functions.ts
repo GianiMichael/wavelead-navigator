@@ -5,16 +5,19 @@ import {
   fetchCommercialRates,
   fetchEstablishmentDensity,
   fetchGridDemand,
+  fetchSteoForecast,
   isGridRange,
 } from "@/lib/market-intel.server";
 import { scoreCombination, type ScoreResult } from "@/lib/priority-score";
 
 export const getMarketIntel = createServerFn({ method: "GET" }).handler(async () => {
-  const [ratesResult, densityResult, gridResult] = await Promise.all([
+  const [ratesResult, densityResult, gridResult, steoResult] = await Promise.all([
     fetchCommercialRates(),
     fetchEstablishmentDensity(),
     fetchGridDemand(),
+    fetchSteoForecast(),
   ]);
+
 
   const rateByState = new Map(ratesResult.rates.map((r) => [r.state, r]));
   const densityKey = (i: string, s: string) => `${i}|${s}`;
