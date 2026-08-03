@@ -599,9 +599,10 @@ function IsoWholesalePanel() {
               <dd className="text-white/85">{active.market || "—"}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt>Reading interval</dt>
+              <dt>Window start</dt>
               <dd className="text-white/85">{stamp(active.intervalStart)}</dd>
             </div>
+
             <div className="flex justify-between gap-3">
               <dt>Cached at</dt>
               <dd className="text-white/85">{stamp(active.fetchedAt)}</dd>
