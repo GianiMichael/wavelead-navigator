@@ -246,7 +246,7 @@ export interface GridDemandResult {
 }
 
 export async function fetchGridDemand(): Promise<GridDemandResult> {
-  return cached("eia:grid-demand", HOUR, async () => {
+  return cached<GridDemandResult>("eia:grid-demand", HOUR, async () => {
     const apiKey = process.env["EIA_API_KEY"];
     const base = {
       history: [] as GridDemandPoint[],
