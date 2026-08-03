@@ -9,12 +9,19 @@ import { naicsForIndustry, CBP_VINTAGE } from "@/data/naics-map";
 import { steoRegionForState } from "@/data/steo-regions";
 import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
 
+import { getIsoPrices } from "@/lib/iso-prices.functions";
 import { getGridDemand, getMarketIntel } from "@/lib/market-intel.functions";
 import { bandLabel, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
 
 export const intelQuery = queryOptions({
   queryKey: ["market-intel"],
   queryFn: () => getMarketIntel(),
+  staleTime: 60 * 60 * 1000,
+});
+
+const isoPricesQuery = queryOptions({
+  queryKey: ["iso-wholesale-prices"],
+  queryFn: () => getIsoPrices(),
   staleTime: 60 * 60 * 1000,
 });
 
