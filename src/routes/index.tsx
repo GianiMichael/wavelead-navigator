@@ -106,7 +106,7 @@ function LandingPage() {
 
             <div className="glass-panel rounded-2xl p-8">
               <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
-                {mode === "signin" ? "Sign in" : "Create account"}
+                Sign in
               </div>
               <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
                 <div className="space-y-2">
@@ -131,7 +131,7 @@ function LandingPage() {
                   <Input
                     id="password"
                     type="password"
-                    autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                    autoComplete="current-password"
                     required
                     minLength={8}
                     value={password}
@@ -145,22 +145,10 @@ function LandingPage() {
                   disabled={busy}
                   className="grad-fill w-full rounded-full border-0 font-medium text-black hover:opacity-90"
                 >
-                  {busy
-                    ? "Working…"
-                    : mode === "signin"
-                      ? "Sign in to Lead Engine"
-                      : "Create account"}
+                  {busy ? "Working…" : "Sign in to Lead Engine"}
                 </Button>
               </form>
-              <button
-                type="button"
-                onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-                className="mt-5 text-xs text-white/50 transition-colors hover:text-white"
-              >
-                {mode === "signin"
-                  ? "Need an account? Create one"
-                  : "Already have an account? Sign in"}
-              </button>
+
               <p className="mt-6 text-xs" style={{ color: "var(--cc-muted)" }}>
                 Signing in unlocks live Google Places search, enrichment providers, Instantly
                 campaigns and your real pipeline data.
