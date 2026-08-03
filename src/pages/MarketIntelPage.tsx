@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 
+import { DemoBadge } from "@/components/DemoBadge";
 import { lookupMarket } from "@/data/deregulated-markets";
 import { CBECS_SOURCE, intensityForIndustry, rankedIntensity } from "@/data/energy-intensity";
 import { naicsForIndustry, CBP_VINTAGE } from "@/data/naics-map";
@@ -836,6 +837,7 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
               </span>
             </div>
             <nav className="flex items-center gap-5 text-sm">
+              {demo && <DemoBadge />}
               <Link
                 to={demo ? "/demo/app" : "/app"}
                 className="text-white/60 transition-colors hover:text-white"
