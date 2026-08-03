@@ -286,38 +286,49 @@ function hoursAgo(period: string): number | null {
   return Math.max(0, Math.round((Date.now() - t) / 3_600_000));
 }
 
+function hourLabel(period: string) {
+  const m = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
+  if (!m) return period;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4])));
+  return d.toLocaleTimeString("en-US", { hour: "numeric" });
+}
+
+function hourStamp(period: string) {
+  const m = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
+  if (!m) return period;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4])));
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric" });
+}
+
 function GridDemandWidget({
   grid,
 }: {
   grid: {
-    latest?: { period: string; mwh: number };
-    history: { period: string; mwh: number }[];
+    latest?: { period: string; mw: number };
+    history: { period: string; mw: number }[];
     regionName: string;
     error?: string;
   };
 }) {
   const [age, setAge] = useState<number | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
   useEffect(() => {
     if (grid.latest) setAge(hoursAgo(grid.latest.period));
   }, [grid.latest]);
 
   const pts = grid.history;
-  const w = 260;
-  const h = 60;
-  const values = pts.map((p) => p.mwh);
-  const min = Math.min(...values, Infinity);
-  const max = Math.max(...values, -Infinity);
-  const path =
-    pts.length > 1
-      ? pts
-          .map(
-            (p, i) =>
-              `${i === 0 ? "M" : "L"}${(i / (pts.length - 1)) * w},${
-                h - ((p.mwh - min) / (max - min || 1)) * (h - 6) - 3
-              }`,
-          )
-          .join(" ")
-      : "";
+  const w = 300;
+  const h = 130;
+  const pad = { l: 44, r: 8, t: 10, b: 24 };
+  const plotW = w - pad.l - pad.r;
+  const plotH = h - pad.t - pad.b;
+  const values = pts.map((p) => p.mw);
+  const lo = Math.min(...values, Infinity) * 0.98;
+  const hi = Math.max(...values, -Infinity) * 1.02;
+  const x = (i: number) => pad.l + (pts.length > 1 ? (i / (pts.length - 1)) * plotW : plotW / 2);
+  const y = (v: number) => pad.t + plotH - ((v - lo) / (hi - lo || 1)) * plotH;
+  const path = pts.length > 1 ? pts.map((p, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(p.mw)}`).join(" ") : "";
+  const xLabelEvery = Math.max(1, Math.ceil(pts.length / 4));
 
   return (
     <div className="glass-panel rounded-2xl p-5">
@@ -338,9 +349,9 @@ function GridDemandWidget({
       ) : (
         <>
           <div className="mt-3 text-3xl font-semibold tabular-nums">
-            {Math.round(grid.latest.mwh).toLocaleString()}
+            {Math.round(grid.latest.mw).toLocaleString()}
             <span className="ml-1.5 text-sm font-normal" style={{ color: "var(--cc-muted)" }}>
-              MWh
+              MW
             </span>
           </div>
           <div className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
@@ -348,20 +359,72 @@ function GridDemandWidget({
           </div>
 
           {path && (
-            <svg viewBox={`0 0 ${w} ${h}`} className="mt-3 w-full" role="img" aria-label="24-hour grid demand sparkline">
-              <path d={path} fill="none" stroke="oklch(0.66 0.26 340)" strokeWidth={2} />
-            </svg>
+            <div className="relative mt-3">
+              <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="24-hour grid demand">
+                {[0, 1, 2].map((i) => {
+                  const v = lo + ((hi - lo) / 2) * i;
+                  return (
+                    <g key={i}>
+                      <line x1={pad.l} x2={w - pad.r} y1={y(v)} y2={y(v)} stroke="rgba(255,255,255,0.10)" />
+                      <text x={pad.l - 6} y={y(v) + 3.5} textAnchor="end" fontSize={8} fill="rgba(255,255,255,0.5)">
+                        {Math.round(v / 1000)}k
+                      </text>
+                    </g>
+                  );
+                })}
+                <text
+                  transform={`translate(9 ${pad.t + plotH / 2}) rotate(-90)`}
+                  textAnchor="middle"
+                  fontSize={8}
+                  fill="rgba(255,255,255,0.6)"
+                >
+                  MW
+                </text>
+
+                <path d={path} fill="none" stroke="oklch(0.66 0.26 340)" strokeWidth={2} />
+
+                {pts.map((p, i) => (
+                  <g key={p.period}>
+                    {hover === i && <circle cx={x(i)} cy={y(p.mw)} r={3.5} fill="oklch(0.66 0.26 340)" />}
+                    <rect
+                      x={x(i) - plotW / (pts.length * 2)}
+                      y={pad.t}
+                      width={plotW / pts.length}
+                      height={plotH}
+                      fill="transparent"
+                      onMouseEnter={() => setHover(i)}
+                      onMouseLeave={() => setHover(null)}
+                    />
+                    {i % xLabelEvery === 0 && (
+                      <text x={x(i)} y={h - 8} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.5)">
+                        {hourLabel(p.period)}
+                      </text>
+                    )}
+                  </g>
+                ))}
+              </svg>
+
+              {hover !== null && pts[hover] && (
+                <div
+                  className="pointer-events-none absolute -top-2 rounded-lg border border-white/15 bg-black/85 px-2 py-1 text-[10px] whitespace-nowrap backdrop-blur"
+                  style={{ left: `${(x(hover) / w) * 100}%`, transform: "translateX(-50%)" }}
+                >
+                  {hourStamp(pts[hover]!.period)}: {Math.round(pts[hover]!.mw).toLocaleString()} MW
+                </div>
+              )}
+            </div>
           )}
 
           <p className="mt-3 text-[11px]" style={{ color: "var(--cc-muted)" }}>
-            Total grid load, updated hourly — not a customer demand charge. Source: EIA-930 Hourly
-            Electric Grid Monitor.
+            Total grid load (power), updated hourly — not a customer demand charge. Source: EIA-930
+            Hourly Electric Grid Monitor.
           </p>
         </>
       )}
     </div>
   );
 }
+
 
 /* ── Rate trend line chart with axes + tooltips ─────────────────── */
 
