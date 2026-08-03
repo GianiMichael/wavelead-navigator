@@ -780,7 +780,15 @@ function DetailPanel({
               history={rate.history}
               stateName={rate.stateName}
               {...(rate.trendPct !== undefined ? { trendPct: rate.trendPct } : {})}
+              {...(forecast.length > 0
+                ? {
+                    forecast,
+                    ...(region ? { forecastRegion: region.name } : {}),
+                    ...(steo?.vintage ? { forecastVintage: steo.vintage } : {}),
+                  }
+                : {})}
             />
+
           ) : (
             <p className="text-sm" style={{ color: "var(--cc-muted)" }}>
               No rate history available for {row.stateName}.
