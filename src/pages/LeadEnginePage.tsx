@@ -476,7 +476,7 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
               )}
             </div>
 
-            {prospects.length > 0 && (
+            {prospects.length > 0 && !demo && (
               <div className="mt-6 flex flex-col items-center gap-3">
                 {nextPageToken && !exhausted ? (
                   <Button
