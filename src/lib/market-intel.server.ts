@@ -228,62 +228,114 @@ export async function fetchEstablishmentDensity(): Promise<DensityResult> {
 // ── EIA-930 Hourly Electric Grid Monitor ──────────────────────────────
 
 export interface GridDemandPoint {
-  /** ISO-ish hour period from EIA, e.g. "2026-08-03T07" (UTC). */
+  /** Period key: "YYYY-MM-DDTHH" (hourly), "YYYY-MM-DD" (daily), "YYYY-MM" (monthly). */
   period: string;
-  /** Instantaneous hourly demand (power) in megawatts. EIA-930 type "D". */
+  /** Average demand (power) over the period, in megawatts. EIA-930 type "D". */
   mw: number;
 }
 
+export const GRID_RANGES = ["24H", "48H", "1W", "1M", "1Y"] as const;
+export type GridRange = (typeof GRID_RANGES)[number];
+export type GridGranularity = "hour" | "day" | "month";
+
+export function isGridRange(v: unknown): v is GridRange {
+  return typeof v === "string" && (GRID_RANGES as readonly string[]).includes(v);
+}
 
 export interface GridDemandResult {
-  /** Most recent hourly demand reading. */
+  /** Most recent reading at the selected granularity. */
   latest?: GridDemandPoint;
-  /** Last 24 hours, oldest first. */
+  /** Series for the requested window, oldest first. */
   history: GridDemandPoint[];
+  range: GridRange;
+  granularity: GridGranularity;
   region: string;
   regionName: string;
   fetchedAt: string;
   error?: string;
 }
 
-export async function fetchGridDemand(): Promise<GridDemandResult> {
-  return cached<GridDemandResult>("eia:grid-demand", HOUR, async () => {
+/**
+ * EIA-930 coverage (checked against the v2 API at build time):
+ *  - hourly  region-data:       2019-01-01 → now
+ *  - daily   daily-region-data: 2019-01-01 → yesterday (MWh summed per day)
+ * There is no monthly RTO endpoint, so the 1Y window pulls ~366 daily rows and
+ * averages them into calendar months — plotting 8,760 hourly points would be
+ * unreadable noise.
+ */
+const RANGE_SPEC: Record<
+  GridRange,
+  { frequency: "hourly" | "daily"; length: number; granularity: GridGranularity }
+> = {
+  "24H": { frequency: "hourly", length: 24, granularity: "hour" },
+  "48H": { frequency: "hourly", length: 48, granularity: "hour" },
+  "1W": { frequency: "daily", length: 7, granularity: "day" },
+  "1M": { frequency: "daily", length: 30, granularity: "day" },
+  "1Y": { frequency: "daily", length: 366, granularity: "month" },
+};
+
+/** Average daily MWh totals into calendar-month average MW. */
+function monthlyAverages(daily: GridDemandPoint[]): GridDemandPoint[] {
+  const buckets = new Map<string, { sum: number; n: number }>();
+  for (const p of daily) {
+    const key = p.period.slice(0, 7);
+    const b = buckets.get(key) ?? { sum: 0, n: 0 };
+    b.sum += p.mw;
+    b.n += 1;
+    buckets.set(key, b);
+  }
+  return [...buckets.entries()]
+    .map(([period, b]) => ({ period, mw: b.sum / b.n }))
+    .sort((a, b) => a.period.localeCompare(b.period));
+}
+
+export async function fetchGridDemand(range: GridRange = "24H"): Promise<GridDemandResult> {
+  const spec = RANGE_SPEC[range];
+  return cached<GridDemandResult>(`eia:grid-demand:${range}`, HOUR, async () => {
     const apiKey = process.env["EIA_API_KEY"];
     const base = {
       history: [] as GridDemandPoint[],
+      range,
+      granularity: spec.granularity,
       region: "US48",
       regionName: "United States Lower 48",
       fetchedAt: new Date().toISOString(),
     };
-    if (!apiKey) return { ...base, error: "EIA API key is not configured." } satisfies GridDemandResult;
+    if (!apiKey)
+      return { ...base, error: "EIA API key is not configured." } satisfies GridDemandResult;
 
+    const hourly = spec.frequency === "hourly";
     const params = new URLSearchParams();
     params.set("api_key", apiKey);
-    params.set("frequency", "hourly");
+    params.set("frequency", spec.frequency);
     params.append("data[0]", "value");
     params.append("facets[respondent][]", "US48");
     params.append("facets[type][]", "D");
+    if (!hourly) params.append("facets[timezone][]", "Eastern");
     params.append("sort[0][column]", "period");
     params.append("sort[0][direction]", "desc");
-    params.set("length", "24");
+    params.set("length", String(spec.length));
+
+    const dataset = hourly ? "region-data" : "daily-region-data";
 
     try {
       const res = await fetch(
-        `https://api.eia.gov/v2/electricity/rto/region-data/data/?${params.toString()}`,
+        `https://api.eia.gov/v2/electricity/rto/${dataset}/data/?${params.toString()}`,
       );
       if (!res.ok) throw new Error(`EIA responded ${res.status}`);
       const json = (await res.json()) as {
         response?: { data?: { period: string; value: string | number }[] };
       };
-      const history = (json.response?.data ?? [])
-        .map((r) => ({
-          period: r.period,
-          mw: typeof r.value === "string" ? Number.parseFloat(r.value) : r.value,
-        }))
+      const rows = (json.response?.data ?? [])
+        .map((r) => {
+          const raw = typeof r.value === "string" ? Number.parseFloat(r.value) : r.value;
+          // Daily rows are MWh summed over the day → convert to average MW.
+          return { period: r.period, mw: hourly ? raw : raw / 24 };
+        })
         .filter((p) => Number.isFinite(p.mw))
-
         .sort((a, b) => a.period.localeCompare(b.period));
 
+      const history = spec.granularity === "month" ? monthlyAverages(rows) : rows;
       const latest = history[history.length - 1];
       return {
         ...base,
@@ -299,3 +351,4 @@ export async function fetchGridDemand(): Promise<GridDemandResult> {
     }
   });
 }
+
