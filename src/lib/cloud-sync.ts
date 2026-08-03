@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json, TablesInsert } from "@/integrations/supabase/types";
 import type { CachedEnrichment } from "@/lib/enrichment-cache";
 import { mergeEnrichmentCache, readEnrichmentCache } from "@/lib/enrichment-cache";
 import type { PipelineRecord } from "@/lib/pipeline-store";
@@ -11,6 +12,11 @@ import { readPipeline, writePipelineLocal } from "@/lib/pipeline-store";
  */
 
 type Row = Record<string, unknown>;
+type PipelineRow = TablesInsert<"pipeline_records">;
+
+function asJson(value: unknown): Json {
+  return JSON.parse(JSON.stringify(value)) as Json;
+}
 
 function toRecord(row: Row): PipelineRecord {
   return {
@@ -33,7 +39,7 @@ function toRecord(row: Row): PipelineRecord {
   };
 }
 
-function toRow(r: PipelineRecord): Row {
+function toRow(r: PipelineRecord): PipelineRow {
   return {
     lead_id: r.leadId,
     business_name: r.businessName,
@@ -89,7 +95,7 @@ export async function pushLocalToCloud(): Promise<void> {
   const cache = Object.values(readEnrichmentCache());
   if (cache.length) {
     await supabase.from("enrichment_cache").upsert(
-      cache.map((c) => ({ domain: c.domain, payload: c, cached_at: c.cachedAt })),
+      cache.map((c) => ({ domain: c.domain, payload: asJson(c), cached_at: c.cachedAt })),
       { onConflict: "domain" },
     );
   }
@@ -114,7 +120,7 @@ export async function upsertEnrichmentCloud(entry: CachedEnrichment) {
   const { error } = await supabase
     .from("enrichment_cache")
     .upsert(
-      { domain: entry.domain, payload: entry, cached_at: entry.cachedAt },
+      { domain: entry.domain, payload: asJson(entry), cached_at: entry.cachedAt },
       { onConflict: "domain" },
     );
   if (error) console.error("[cloud-sync] enrichment upsert failed", error.message);
