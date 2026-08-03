@@ -59,18 +59,16 @@ export function saveEnrichment(domain: string, result: EnrichmentResult) {
   if (!isBrowser() || !domain) return;
   // Don't cache failed lookups — those should be retried.
   if (result.error) return;
-  const cache = loadEnrichmentCache();
-  cache[normalizeDomain(domain)] = {
+  const entry: CachedEnrichment = {
     ...result,
     domain: normalizeDomain(domain),
     cachedAt: new Date().toISOString(),
   };
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(cache));
-  } catch {
-    /* storage unavailable — enrichment still works, just uncached */
-  }
+  writeCache({ ...loadEnrichmentCache(), [entry.domain]: entry });
+  // Shared cloud copy so the editor and the published site see the same data.
+  void import("@/lib/cloud-sync").then((m) => m.upsertEnrichmentCloud(entry));
 }
+
 
 /** Set of normalized domains that already have saved enrichment data. */
 export function cachedDomains(): Set<string> {
