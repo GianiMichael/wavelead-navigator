@@ -230,9 +230,10 @@ export async function fetchEstablishmentDensity(): Promise<DensityResult> {
 export interface GridDemandPoint {
   /** ISO-ish hour period from EIA, e.g. "2026-08-03T07" (UTC). */
   period: string;
-  /** Megawatthours for that hour. */
-  mwh: number;
+  /** Instantaneous hourly demand (power) in megawatts. EIA-930 type "D". */
+  mw: number;
 }
+
 
 export interface GridDemandResult {
   /** Most recent hourly demand reading. */
@@ -277,9 +278,10 @@ export async function fetchGridDemand(): Promise<GridDemandResult> {
       const history = (json.response?.data ?? [])
         .map((r) => ({
           period: r.period,
-          mwh: typeof r.value === "string" ? Number.parseFloat(r.value) : r.value,
+          mw: typeof r.value === "string" ? Number.parseFloat(r.value) : r.value,
         }))
-        .filter((p) => Number.isFinite(p.mwh))
+        .filter((p) => Number.isFinite(p.mw))
+
         .sort((a, b) => a.period.localeCompare(b.period));
 
       const latest = history[history.length - 1];

@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 
+import { lookupMarket } from "@/data/deregulated-markets";
 import { CBECS_SOURCE, intensityForIndustry, rankedIntensity } from "@/data/energy-intensity";
 import { naicsForIndustry, CBP_VINTAGE } from "@/data/naics-map";
+import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
+
 import { getMarketIntel } from "@/lib/market-intel.functions";
 import { bandLabel, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
 
@@ -91,7 +94,7 @@ function HeroCard({ row, onOpen }: { row: ScoreResult; onOpen: () => void }) {
     {
       label: "Energy intensity",
       value: euiFor(row) ? `${euiFor(row)}` : "n/a",
-      unit: "kBtu/sq ft",
+      unit: "kBtu/sq ft/year",
     },
     {
       label: "Rate trend",
@@ -226,7 +229,7 @@ function IntensityPanel({ onSelect }: { onSelect: (industryKey: string) => void 
     <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
-          Total combined energy intensity (kBtu/sq ft)
+          Total combined energy intensity (kBtu/sq ft/year)
         </div>
         <span
           className="rounded-full border border-white/12 px-2 py-0.5 text-[10px]"
@@ -286,38 +289,49 @@ function hoursAgo(period: string): number | null {
   return Math.max(0, Math.round((Date.now() - t) / 3_600_000));
 }
 
+function hourLabel(period: string) {
+  const m = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
+  if (!m) return period;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4])));
+  return d.toLocaleTimeString("en-US", { hour: "numeric" });
+}
+
+function hourStamp(period: string) {
+  const m = period.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})/);
+  if (!m) return period;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4])));
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric" });
+}
+
 function GridDemandWidget({
   grid,
 }: {
   grid: {
-    latest?: { period: string; mwh: number };
-    history: { period: string; mwh: number }[];
+    latest?: { period: string; mw: number };
+    history: { period: string; mw: number }[];
     regionName: string;
     error?: string;
   };
 }) {
   const [age, setAge] = useState<number | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
   useEffect(() => {
     if (grid.latest) setAge(hoursAgo(grid.latest.period));
   }, [grid.latest]);
 
   const pts = grid.history;
-  const w = 260;
-  const h = 60;
-  const values = pts.map((p) => p.mwh);
-  const min = Math.min(...values, Infinity);
-  const max = Math.max(...values, -Infinity);
-  const path =
-    pts.length > 1
-      ? pts
-          .map(
-            (p, i) =>
-              `${i === 0 ? "M" : "L"}${(i / (pts.length - 1)) * w},${
-                h - ((p.mwh - min) / (max - min || 1)) * (h - 6) - 3
-              }`,
-          )
-          .join(" ")
-      : "";
+  const w = 300;
+  const h = 130;
+  const pad = { l: 44, r: 8, t: 10, b: 24 };
+  const plotW = w - pad.l - pad.r;
+  const plotH = h - pad.t - pad.b;
+  const values = pts.map((p) => p.mw);
+  const lo = Math.min(...values, Infinity) * 0.98;
+  const hi = Math.max(...values, -Infinity) * 1.02;
+  const x = (i: number) => pad.l + (pts.length > 1 ? (i / (pts.length - 1)) * plotW : plotW / 2);
+  const y = (v: number) => pad.t + plotH - ((v - lo) / (hi - lo || 1)) * plotH;
+  const path = pts.length > 1 ? pts.map((p, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(p.mw)}`).join(" ") : "";
+  const xLabelEvery = Math.max(1, Math.ceil(pts.length / 4));
 
   return (
     <div className="glass-panel rounded-2xl p-5">
@@ -338,9 +352,9 @@ function GridDemandWidget({
       ) : (
         <>
           <div className="mt-3 text-3xl font-semibold tabular-nums">
-            {Math.round(grid.latest.mwh).toLocaleString()}
+            {Math.round(grid.latest.mw).toLocaleString()}
             <span className="ml-1.5 text-sm font-normal" style={{ color: "var(--cc-muted)" }}>
-              MWh
+              MW
             </span>
           </div>
           <div className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
@@ -348,20 +362,72 @@ function GridDemandWidget({
           </div>
 
           {path && (
-            <svg viewBox={`0 0 ${w} ${h}`} className="mt-3 w-full" role="img" aria-label="24-hour grid demand sparkline">
-              <path d={path} fill="none" stroke="oklch(0.66 0.26 340)" strokeWidth={2} />
-            </svg>
+            <div className="relative mt-3">
+              <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="24-hour grid demand">
+                {[0, 1, 2].map((i) => {
+                  const v = lo + ((hi - lo) / 2) * i;
+                  return (
+                    <g key={i}>
+                      <line x1={pad.l} x2={w - pad.r} y1={y(v)} y2={y(v)} stroke="rgba(255,255,255,0.10)" />
+                      <text x={pad.l - 6} y={y(v) + 3.5} textAnchor="end" fontSize={8} fill="rgba(255,255,255,0.5)">
+                        {Math.round(v / 1000)}k
+                      </text>
+                    </g>
+                  );
+                })}
+                <text
+                  transform={`translate(9 ${pad.t + plotH / 2}) rotate(-90)`}
+                  textAnchor="middle"
+                  fontSize={8}
+                  fill="rgba(255,255,255,0.6)"
+                >
+                  MW
+                </text>
+
+                <path d={path} fill="none" stroke="oklch(0.66 0.26 340)" strokeWidth={2} />
+
+                {pts.map((p, i) => (
+                  <g key={p.period}>
+                    {hover === i && <circle cx={x(i)} cy={y(p.mw)} r={3.5} fill="oklch(0.66 0.26 340)" />}
+                    <rect
+                      x={x(i) - plotW / (pts.length * 2)}
+                      y={pad.t}
+                      width={plotW / pts.length}
+                      height={plotH}
+                      fill="transparent"
+                      onMouseEnter={() => setHover(i)}
+                      onMouseLeave={() => setHover(null)}
+                    />
+                    {i % xLabelEvery === 0 && (
+                      <text x={x(i)} y={h - 8} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.5)">
+                        {hourLabel(p.period)}
+                      </text>
+                    )}
+                  </g>
+                ))}
+              </svg>
+
+              {hover !== null && pts[hover] && (
+                <div
+                  className="pointer-events-none absolute -top-2 rounded-lg border border-white/15 bg-black/85 px-2 py-1 text-[10px] whitespace-nowrap backdrop-blur"
+                  style={{ left: `${(x(hover) / w) * 100}%`, transform: "translateX(-50%)" }}
+                >
+                  {hourStamp(pts[hover]!.period)}: {Math.round(pts[hover]!.mw).toLocaleString()} MW
+                </div>
+              )}
+            </div>
           )}
 
           <p className="mt-3 text-[11px]" style={{ color: "var(--cc-muted)" }}>
-            Total grid load, updated hourly — not a customer demand charge. Source: EIA-930 Hourly
-            Electric Grid Monitor.
+            Total grid load (power), updated hourly — not a customer demand charge. Source: EIA-930
+            Hourly Electric Grid Monitor.
           </p>
         </>
       )}
     </div>
   );
 }
+
 
 /* ── Rate trend line chart with axes + tooltips ─────────────────── */
 
@@ -504,7 +570,7 @@ function DetailPanel({
       label: "Commercial electricity rate",
       value: row.rateCents !== undefined ? `${row.rateCents.toFixed(2)}¢/kWh` : "n/a",
     },
-    { label: "Energy intensity", value: euiFor(row) ? `${euiFor(row)} kBtu/sq ft` : "n/a" },
+    { label: "Energy intensity", value: euiFor(row) ? `${euiFor(row)} kBtu/sq ft/year` : "n/a" },
     {
       label: "Rate trend",
       value: row.rateTrendPct !== undefined ? `${(row.rateTrendPct * 100).toFixed(1)}%` : "n/a",
@@ -581,7 +647,165 @@ function DetailPanel({
   );
 }
 
+/* ── Runners-up (ranks 2-11) ────────────────────────────────────── */
+
+function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreResult) => void }) {
+  const [open, setOpen] = useState(false);
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="mt-3">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+        aria-expanded={open}
+      >
+        {open ? "Hide next matches" : `See next ${rows.length} matches`}
+      </button>
+
+      {open && (
+        <ul className="mt-3 space-y-1">
+          {rows.map((r, i) => (
+            <li key={`${r.industryKey}-${r.state}`}>
+              <button
+                onClick={() => onOpen(r)}
+                className="grid w-full grid-cols-[1.4rem_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-xl border border-white/8 bg-white/3 px-3 py-2.5 text-left transition-colors hover:bg-white/8"
+              >
+                <span className="text-[11px] tabular-nums" style={{ color: "var(--cc-muted)" }}>
+                  {i + 2}
+                </span>
+                <span className="min-w-0 truncate text-sm">
+                  {r.industryLabel} <span style={{ color: "var(--cc-muted)" }}>· {r.stateName}</span>
+                </span>
+                <span className="text-xs tabular-nums" style={{ color: "var(--cc-muted)" }}>
+                  {r.rateCents !== undefined ? `${r.rateCents.toFixed(1)}¢` : "—"} ·{" "}
+                  {euiFor(r) ? `${euiFor(r)} kBtu/sq ft/year` : "—"}
+                </span>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${bandTone(r.band)}`}
+                >
+                  {r.score.toFixed(0)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ── U.S. rate choropleth ───────────────────────────────────────── */
+
+interface MapRate {
+  state: string;
+  stateName: string;
+  rateCents: number;
+  marketStatus: "deregulated" | "partial";
+}
+
+function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: string) => void }) {
+  const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null);
+
+  const byName = useMemo(() => new Map(rates.map((r) => [r.stateName.toLowerCase(), r])), [rates]);
+  const values = rates.map((r) => r.rateCents);
+  const lo = Math.min(...values, Infinity);
+  const hi = Math.max(...values, -Infinity);
+
+  const fill = (r?: MapRate) => {
+    if (!r) return "rgba(255,255,255,0.05)";
+    const t = hi > lo ? (r.rateCents - lo) / (hi - lo) : 0.5;
+    const l = 0.82 - t * 0.28;
+    const c = 0.06 + t * 0.2;
+    const hue = 55 - t * 100;
+    return `oklch(${l.toFixed(3)} ${c.toFixed(3)} ${hue.toFixed(0)})`;
+  };
+
+  const hovered = hover ? byName.get(hover.name.toLowerCase()) : undefined;
+  const hoveredMarket = hover ? lookupMarket(hover.name) : undefined;
+
+  return (
+    <section className="glass-panel mt-6 rounded-3xl p-6 sm:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
+            Map — commercial electricity rate by state
+          </div>
+          <h2 className="headline mt-1 text-xl">
+            Where power costs the most in <span className="grad-text">open markets</span>
+          </h2>
+        </div>
+        <div className="flex items-center gap-3 text-[11px]" style={{ color: "var(--cc-muted)" }}>
+          <span>{lo === Infinity ? "" : `${lo.toFixed(1)}¢`}</span>
+          <span
+            className="h-2 w-32 rounded-full"
+            style={{
+              background:
+                "linear-gradient(90deg, oklch(0.82 0.06 55), oklch(0.68 0.16 5), oklch(0.54 0.26 315))",
+            }}
+          />
+          <span>{hi === -Infinity ? "" : `${hi.toFixed(1)}¢`}</span>
+          <span className="ml-2 flex items-center gap-1.5">
+            <span className="inline-block h-2 w-4 rounded-sm bg-white/8" /> not deregulated
+          </span>
+        </div>
+      </div>
+
+      <div className="relative mt-5">
+        <svg
+          viewBox={`0 0 ${US_MAP_VIEWBOX.width} ${US_MAP_VIEWBOX.height}`}
+          className="w-full"
+          role="img"
+          aria-label="U.S. commercial electricity rates by state"
+        >
+          {US_STATE_SHAPES.map((s) => {
+            const r = byName.get(s.name.toLowerCase());
+            const active = Boolean(r);
+            return (
+              <path
+                key={s.fips}
+                d={s.d}
+                fill={fill(r)}
+                fillOpacity={active ? (hover?.name === s.name ? 1 : 0.92) : 1}
+                stroke={active ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.10)"}
+                strokeWidth={hover?.name === s.name ? 2 : 0.8}
+                style={{ cursor: active ? "pointer" : "default" }}
+                onMouseMove={(e) => {
+                  const box = e.currentTarget.ownerSVGElement?.getBoundingClientRect();
+                  if (!box) return;
+                  setHover({ name: s.name, x: e.clientX - box.left, y: e.clientY - box.top });
+                }}
+                onMouseLeave={() => setHover((h) => (h?.name === s.name ? null : h))}
+                onClick={() => r && onSelect(r.state)}
+              />
+            );
+          })}
+        </svg>
+
+        {hover && (
+          <div
+            className="pointer-events-none absolute z-10 rounded-xl border border-white/15 bg-black/85 px-3 py-2 text-xs whitespace-nowrap backdrop-blur"
+            style={{ left: hover.x, top: hover.y - 12, transform: "translate(-50%, -100%)" }}
+          >
+            <div className="font-medium">{hover.name}</div>
+            <div style={{ color: "var(--cc-muted)" }}>
+              {hovered
+                ? `${hovered.rateCents.toFixed(2)}¢/kWh · ${
+                    hovered.marketStatus === "partial" ? "Partially deregulated" : "Deregulated"
+                  }`
+                : hoveredMarket?.status === "partial"
+                  ? "Partially deregulated · no rate data"
+                  : "Regulated market — not actionable"}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /* ── Page ───────────────────────────────────────────────────────── */
+
 
 function PriorityTargetsPage() {
   const { data } = useSuspenseQuery(intelQuery);
@@ -706,6 +930,7 @@ function PriorityTargetsPage() {
                 No industry + state combination matches these filters.
               </div>
             )}
+            <RunnersUp rows={rows.slice(1, 11)} onOpen={(r) => setSelected(r)} />
           </div>
 
           <div className="mt-5 grid gap-5 lg:grid-cols-3">
@@ -724,7 +949,21 @@ function PriorityTargetsPage() {
             />
             <GridDemandWidget grid={data.grid} />
           </div>
+
+          <UsRateMap
+            rates={data.rates.rates.map((r) => ({
+              state: r.state,
+              stateName: r.stateName,
+              rateCents: r.rateCents,
+              marketStatus: r.marketStatus,
+            }))}
+            onSelect={(state) => {
+              const row = bestForState(state);
+              if (row) setSelected(row);
+            }}
+          />
         </section>
+
       </div>
 
       {selected && (
