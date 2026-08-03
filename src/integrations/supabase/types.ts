@@ -32,6 +32,39 @@ export type Database = {
         }
         Relationships: []
       }
+      iso_wholesale_prices: {
+        Row: {
+          error: string | null
+          fetched_at: string
+          hub: string
+          interval_start: string | null
+          iso: string
+          iso_name: string
+          market: string
+          price_mwh: number | null
+        }
+        Insert: {
+          error?: string | null
+          fetched_at?: string
+          hub?: string
+          interval_start?: string | null
+          iso: string
+          iso_name?: string
+          market?: string
+          price_mwh?: number | null
+        }
+        Update: {
+          error?: string | null
+          fetched_at?: string
+          hub?: string
+          interval_start?: string | null
+          iso?: string
+          iso_name?: string
+          market?: string
+          price_mwh?: number | null
+        }
+        Relationships: []
+      }
       pipeline_records: {
         Row: {
           business_name: string
