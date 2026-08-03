@@ -31,10 +31,17 @@ My background is in enterprise telecom procurement — managing supplier relatio
 
 ## Screenshots
 
+### Prospect Search
 ![Homepage — Prospect Search](./screenshots/homepage.png)
+
+### Decision-Maker Enrichment & Tier Matching
 ![Decision-Maker Enrichment & Tier Matching](./screenshots/enrichment.png)
+
+### Outreach Command Center
 ![Outreach Command Center](./screenshots/pipeline.png)
 ![Outreach Command Center — Filterable Pipeline Table](./screenshots/pipeline-table.png)
+
+### Market Intelligence
 ![Market Intelligence — Ranked Opportunities](./screenshots/market-intelligence.png)
 ![Market Intelligence — Commercial Rate Ranking by State](./screenshots/rate-ranking.png)
 ![Market Intelligence — Energy Intensity by Vertical](./screenshots/energy-intensity.png)
