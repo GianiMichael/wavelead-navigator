@@ -318,7 +318,7 @@ type GridData = {
   error?: string;
 };
 
-function GridDemandWidget({ grid, demo = false }: { grid: GridData; demo?: boolean }) {
+function GridDemandWidget({ grid }: { grid: GridData }) {
   const [range, setRange] = useState<GridRange>("24H");
   const [age, setAge] = useState<number | null>(null);
   const [hover, setHover] = useState<number | null>(null);
@@ -327,7 +327,7 @@ function GridDemandWidget({ grid, demo = false }: { grid: GridData; demo?: boole
     queryKey: ["grid-demand", range],
     queryFn: () => getGridDemand({ data: { range } }),
     staleTime: 60 * 60 * 1000,
-    enabled: !demo && range !== "24H",
+    enabled: range !== "24H",
   });
 
   const active: GridData = range === "24H" || !ranged ? grid : ranged;
