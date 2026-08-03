@@ -230,9 +230,10 @@ export async function fetchEstablishmentDensity(): Promise<DensityResult> {
 export interface GridDemandPoint {
   /** ISO-ish hour period from EIA, e.g. "2026-08-03T07" (UTC). */
   period: string;
-  /** Megawatthours for that hour. */
-  mwh: number;
+  /** Instantaneous hourly demand (power) in megawatts. EIA-930 type "D". */
+  mw: number;
 }
+
 
 export interface GridDemandResult {
   /** Most recent hourly demand reading. */
