@@ -37,7 +37,12 @@ import {
 } from "@/lib/enrichment-cache";
 
 import type { EnrichmentResult, Prospect } from "@/lib/types";
-import { DEMO_CAMPAIGNS, DEMO_ENRICHMENTS, DEMO_PROSPECTS } from "@/data/demo-data";
+import {
+  DEMO_CAMPAIGNS,
+  DEMO_PAGE_SIZE,
+  buildDemoEnrichment,
+  buildDemoProspects,
+} from "@/data/demo-data";
 import {
   searchProspects,
   enrichCompany,
@@ -79,7 +84,7 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
   useEffect(() => {
     // Demo Mode never touches the shared cloud tables or real saved data.
     if (demo) {
-      setProspects(DEMO_PROSPECTS);
+      setProspects(buildDemoProspects(industry, location));
       return;
     }
     // Pull the shared cloud copy first (so the published site and the editor
@@ -102,6 +107,13 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
     queryFn: () => (demo ? Promise.resolve(DEMO_CAMPAIGNS) : getCampaigns()),
     retry: false,
   });
+
+  // Preselect a campaign so the send step is never a dead end.
+  useEffect(() => {
+    const first = campaigns.data?.[0]?.id;
+    if (!campaignId && first) setCampaignId(first);
+  }, [campaigns.data, campaignId]);
+
 
   const hiddenContacted = useMemo(
     () =>
@@ -147,13 +159,13 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
     setSearching(true);
     setExhausted(false);
     if (demo) {
-      // Demo Mode: serve the frozen sample set, never Google Places.
-      setProspects(DEMO_PROSPECTS);
+      // Demo Mode: a full page of fabricated prospects, never Google Places.
+      setProspects(buildDemoProspects(industry, location, DEMO_PAGE_SIZE));
       setExcludedNoWebsite(0);
       setNextPageToken(undefined);
       setExhausted(true);
       setSearching(false);
-      toast.info("Demo Mode — showing sample prospects, no Places call made.");
+      toast.info("Demo Mode — fictional prospects, no Places call made.");
       return;
     }
     try {
@@ -199,14 +211,10 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
     if (enrichments[p.id] || !p.domain) return;
 
     if (demo) {
-      // Demo Mode: pre-saved contacts, no Hunter/Prospeo/Snov call.
-      const sample = DEMO_ENRICHMENTS[p.domain];
-      if (sample) {
-        setEnrichments((prev) => ({ ...prev, [p.id]: sample }));
-        toast.info("Demo Mode — pre-saved contacts, no enrichment credit used.");
-      } else {
-        toast.info("No sample contacts for this company.");
-      }
+      // Demo Mode: fabricated tier-matched contacts, no Hunter/Prospeo/Snov call.
+      const sample = buildDemoEnrichment(p, industry);
+      setEnrichments((prev) => ({ ...prev, [p.id]: sample }));
+      toast.info("Demo Mode — fictional contacts, no enrichment credit used.");
       return;
     }
 
