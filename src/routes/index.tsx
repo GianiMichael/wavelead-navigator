@@ -240,7 +240,7 @@ function LeadEngine() {
         <div className="text-sm text-muted-foreground">{r.contact.title || "Title unknown"}</div>
         <div className="text-xs text-muted-foreground">{r.contact.email}</div>
         <div className="mt-2 text-[11px] tracking-wide text-accent">
-          {r.tier === "Unmatched" ? "No tier match" : `Tier ${r.tierIndex + 1} · ${r.tier}`}
+          {tierLabel(r)}
           {r.excluded && (
             <span className="ml-2 text-muted-foreground">Non-site scope — deprioritized</span>
           )}
@@ -274,10 +274,8 @@ function LeadEngine() {
         title: activeMatch.contact.title,
         email: activeMatch.contact.email,
         domain: openProspect.domain,
-        tier:
-          activeMatch.tier === "Unmatched"
-            ? "Unmatched"
-            : `Tier ${activeMatch.tierIndex + 1}`,
+        tier: tierShortLabel(activeMatch),
+
         industry,
         industryLabel,
         deregulated:
