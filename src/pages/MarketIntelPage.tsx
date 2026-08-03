@@ -483,7 +483,138 @@ function GridDemandWidget({ grid }: { grid: GridData }) {
 
 
 
-/* ── Rate trend line chart with axes + tooltips ─────────────────── */
+/* ── Wholesale ISO/RTO prices (GridStatus.io, cached) ───────────── */
+
+function freshness(iso: string | null) {
+  if (!iso) return "no data yet";
+  const diff = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(diff / 3_600_000);
+  if (h < 1) return "updated just now";
+  if (h < 24) return `updated ${h}h ago`;
+  return `updated ${Math.floor(h / 24)}d ago`;
+}
+
+function stamp(iso: string | null) {
+  if (!iso) return "—";
+  return `${new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  })} UTC`;
+}
+
+function IsoWholesalePanel() {
+  const { data, isPending } = useQuery(isoPricesQuery);
+  const [open, setOpen] = useState<string | null>(null);
+
+  const regions = data?.regions ?? [];
+  const active = regions.find((r) => r.iso === open);
+
+  return (
+    <div className="glass-panel mt-5 rounded-2xl p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
+          Electricity — wholesale price (ISO/RTO)
+        </div>
+        <span className="flex items-center gap-1.5 text-[10px]" style={{ color: "var(--cc-muted)" }}>
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />
+          {isPending ? "loading…" : freshness(data?.lastUpdated ?? null)}
+        </span>
+      </div>
+
+      <p className="mt-2 text-[11px]" style={{ color: "var(--cc-muted)" }}>
+        What suppliers pay to acquire power on the spot market — not what your prospects pay on
+        their bills. Compare against the commercial retail rate panel above.
+      </p>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {regions.map((r) => {
+          const selected = open === r.iso;
+          return (
+            <button
+              key={r.iso}
+              type="button"
+              onClick={() => setOpen(selected ? null : r.iso)}
+              aria-pressed={selected}
+              className={`rounded-xl border p-4 text-left transition ${
+                selected
+                  ? "border-white/25 bg-white/10"
+                  : "border-white/10 bg-white/5 hover:border-white/20"
+              }`}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-sm font-semibold">{r.iso}</span>
+                <span className="text-[10px]" style={{ color: "var(--cc-muted)" }}>
+                  {r.hub}
+                </span>
+              </div>
+              <div className="mt-2 text-2xl font-semibold tabular-nums">
+                {r.priceMwh === null ? (
+                  <span className="text-base font-normal text-amber-200">n/a</span>
+                ) : (
+                  <>
+                    ${r.priceMwh.toFixed(2)}
+                    <span
+                      className="ml-1 text-xs font-normal"
+                      style={{ color: "var(--cc-muted)" }}
+                    >
+                      /MWh
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
+                {r.priceCentsKwh !== null ? `${r.priceCentsKwh.toFixed(2)}¢/kWh · ` : ""}
+                {r.states.join(", ")}
+              </div>
+            </button>
+          );
+        })}
+        {!isPending && regions.length === 0 && (
+          <p className="text-xs text-amber-200">Wholesale prices unavailable.</p>
+        )}
+      </div>
+
+      {active && (
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-[11px]">
+          <div className="text-sm font-semibold text-white">{active.isoName}</div>
+          <dl className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2" style={{ color: "var(--cc-muted)" }}>
+            <div className="flex justify-between gap-3">
+              <dt>Hub</dt>
+              <dd className="text-white/85">{active.hub}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Market</dt>
+              <dd className="text-white/85">{active.market || "—"}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Reading interval</dt>
+              <dd className="text-white/85">{stamp(active.intervalStart)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Cached at</dt>
+              <dd className="text-white/85">{stamp(active.fetchedAt)}</dd>
+            </div>
+            <div className="flex justify-between gap-3 sm:col-span-2">
+              <dt>Deregulated states served</dt>
+              <dd className="text-white/85">{active.states.join(", ")}</dd>
+            </div>
+          </dl>
+          {active.error && <p className="mt-2 text-amber-200">Last fetch error: {active.error}</p>}
+        </div>
+      )}
+
+      <p className="mt-3 text-[11px]" style={{ color: "var(--cc-muted)" }}>
+        Source: GridStatus.io real-time ISO/RTO locational prices · cached once daily and shared
+        across all visitors · last refresh {stamp(data?.lastUpdated ?? null)}.
+      </p>
+    </div>
+  );
+}
+
+
 
 function RateHistoryChart({
   history,
