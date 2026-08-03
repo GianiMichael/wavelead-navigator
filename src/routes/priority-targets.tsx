@@ -717,7 +717,7 @@ function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: st
     const t = hi > lo ? (r.rateCents - lo) / (hi - lo) : 0.5;
     const l = 0.82 - t * 0.28;
     const c = 0.06 + t * 0.2;
-    const hue = 55 + t * 260;
+    const hue = 55 - t * 100;
     return `oklch(${l.toFixed(3)} ${c.toFixed(3)} ${hue.toFixed(0)})`;
   };
 
