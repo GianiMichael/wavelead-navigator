@@ -532,9 +532,11 @@ function IsoWholesalePanel() {
       </div>
 
       <p className="mt-2 text-[11px]" style={{ color: "var(--cc-muted)" }}>
-        What suppliers pay to acquire power on the spot market — not what your prospects pay on
-        their bills. Compare against the commercial retail rate panel above.
+        Day-ahead hourly prices averaged over the last 24 hours — what suppliers pay to acquire
+        power, not what your prospects pay on their bills. Day-ahead avoids the transient congestion
+        spikes seen in real-time prices. Compare against the commercial retail rate panel above.
       </p>
+
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {regions.map((r) => {
