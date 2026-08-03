@@ -1257,6 +1257,9 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
             <GridDemandWidget grid={data.grid} />
           </div>
 
+          <IsoWholesalePanel />
+
+
           <UsRateMap
             rates={data.rates.rates.map((r) => ({
               state: r.state,
