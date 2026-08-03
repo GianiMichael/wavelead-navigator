@@ -14,13 +14,19 @@ interface CacheEntry<T> {
 }
 const cache = new Map<string, CacheEntry<unknown>>();
 
-async function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
+async function cached<T extends { error?: string }>(
+  key: string,
+  ttlMs: number,
+  fn: () => Promise<T>,
+): Promise<T> {
   const hit = cache.get(key);
   if (hit && hit.expires > Date.now()) return hit.value as T;
   const value = await fn();
-  cache.set(key, { value, expires: Date.now() + ttlMs });
+  // Never cache a failed fetch — otherwise a transient/API-key error sticks for days.
+  if (!value.error) cache.set(key, { value, expires: Date.now() + ttlMs });
   return value;
 }
+
 
 /** States we care about: fully or partially deregulated. */
 export function targetStates() {
@@ -146,16 +152,17 @@ export interface DensityResult {
 async function fetchIndustryDensity(industryKey: string, apiKey: string): Promise<DensityRow[]> {
   const naics = naicsForIndustry(industryKey);
   if (!naics) return [];
+  // The CBP 2023 vintage still exposes the NAICS2017 predicate variable.
   const url =
     `https://api.census.gov/data/${CBP_VINTAGE.year}/cbp?get=ESTAB,EMP&for=state:*` +
-    `&NAICS2022=${encodeURIComponent(naics.naics)}&key=${apiKey}`;
+    `&${CBP_VINTAGE.naicsVariable}=${encodeURIComponent(naics.naics)}&key=${apiKey}`;
 
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Census responded ${res.status}`);
   const text = await res.text();
-  if (!text.trim().startsWith("[")) {
-    throw new Error("Census rejected the request (check that the API key is activated).");
+  if (!res.ok || !text.trim().startsWith("[")) {
+    throw new Error(`Census ${res.status}: ${text.trim().slice(0, 200) || "empty response"}`);
   }
+
   const table = JSON.parse(text) as string[][];
   const [header, ...body] = table;
   if (!header) return [];

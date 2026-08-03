@@ -44,4 +44,10 @@ export const FIPS_TO_STATE: Record<string, string> = Object.fromEntries(
   Object.entries(STATE_FIPS).map(([code, fips]) => [fips, code]),
 );
 
-export const CBP_VINTAGE = { year: 2023, dataLabel: "2023 reference year (released 2025)" };
+export const CBP_VINTAGE = {
+  year: 2023,
+  dataLabel: "2023 reference year (released 2025)",
+  /** Predicate variable the 2023 CBP endpoint accepts (it is NOT NAICS2022). */
+  naicsVariable: "NAICS2017",
+};
+
