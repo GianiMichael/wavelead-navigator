@@ -224,3 +224,76 @@ export async function fetchEstablishmentDensity(): Promise<DensityResult> {
     } satisfies DensityResult;
   });
 }
+
+// ── EIA-930 Hourly Electric Grid Monitor ──────────────────────────────
+
+export interface GridDemandPoint {
+  /** ISO-ish hour period from EIA, e.g. "2026-08-03T07" (UTC). */
+  period: string;
+  /** Megawatthours for that hour. */
+  mwh: number;
+}
+
+export interface GridDemandResult {
+  /** Most recent hourly demand reading. */
+  latest?: GridDemandPoint;
+  /** Last 24 hours, oldest first. */
+  history: GridDemandPoint[];
+  region: string;
+  regionName: string;
+  fetchedAt: string;
+  error?: string;
+}
+
+export async function fetchGridDemand(): Promise<GridDemandResult> {
+  return cached("eia:grid-demand", HOUR, async () => {
+    const apiKey = process.env["EIA_API_KEY"];
+    const base = {
+      history: [] as GridDemandPoint[],
+      region: "US48",
+      regionName: "United States Lower 48",
+      fetchedAt: new Date().toISOString(),
+    };
+    if (!apiKey) return { ...base, error: "EIA API key is not configured." } satisfies GridDemandResult;
+
+    const params = new URLSearchParams();
+    params.set("api_key", apiKey);
+    params.set("frequency", "hourly");
+    params.append("data[0]", "value");
+    params.append("facets[respondent][]", "US48");
+    params.append("facets[type][]", "D");
+    params.append("sort[0][column]", "period");
+    params.append("sort[0][direction]", "desc");
+    params.set("length", "24");
+
+    try {
+      const res = await fetch(
+        `https://api.eia.gov/v2/electricity/rto/region-data/data/?${params.toString()}`,
+      );
+      if (!res.ok) throw new Error(`EIA responded ${res.status}`);
+      const json = (await res.json()) as {
+        response?: { data?: { period: string; value: string | number }[] };
+      };
+      const history = (json.response?.data ?? [])
+        .map((r) => ({
+          period: r.period,
+          mwh: typeof r.value === "string" ? Number.parseFloat(r.value) : r.value,
+        }))
+        .filter((p) => Number.isFinite(p.mwh))
+        .sort((a, b) => a.period.localeCompare(b.period));
+
+      const latest = history[history.length - 1];
+      return {
+        ...base,
+        history,
+        ...(latest ? { latest } : {}),
+        fetchedAt: new Date().toISOString(),
+      } satisfies GridDemandResult;
+    } catch (e) {
+      return {
+        ...base,
+        error: e instanceof Error ? e.message : "EIA grid monitor request failed.",
+      } satisfies GridDemandResult;
+    }
+  });
+}
