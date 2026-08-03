@@ -1,0 +1,218 @@
+import { MARKETS } from "@/data/deregulated-markets";
+import { CBP_VINTAGE, NAICS_MAP, STATE_FIPS, naicsForIndustry } from "@/data/naics-map";
+
+/**
+ * EIA + Census fetchers with an in-memory TTL cache. Both datasets refresh
+ * monthly/annually, so there is no reason to re-hit the APIs per page load.
+ */
+
+const DAY = 24 * 60 * 60 * 1000;
+
+interface CacheEntry<T> {
+  value: T;
+  expires: number;
+}
+const cache = new Map<string, CacheEntry<unknown>>();
+
+async function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
+  const hit = cache.get(key);
+  if (hit && hit.expires > Date.now()) return hit.value as T;
+  const value = await fn();
+  cache.set(key, { value, expires: Date.now() + ttlMs });
+  return value;
+}
+
+/** States we care about: fully or partially deregulated. */
+export function targetStates() {
+  return MARKETS.filter((m) => m.status === "deregulated" || m.status === "partial");
+}
+
+// ── EIA retail rates ──────────────────────────────────────────────────
+
+export interface StateRate {
+  state: string;
+  stateName: string;
+  marketStatus: "deregulated" | "partial";
+  /** cents per kWh */
+  rateCents: number;
+  /** YYYY-MM of the observation */
+  period: string;
+  /** Fractional change vs. ~3 months earlier (0.08 = +8%). */
+  trendPct?: number;
+  /** Recent monthly history, oldest first. */
+  history: { period: string; rateCents: number }[];
+}
+
+export interface RetailRateResult {
+  rates: StateRate[];
+  /** Latest data month present across all states. */
+  dataMonth: string;
+  fetchedAt: string;
+  error?: string;
+}
+
+export async function fetchCommercialRates(): Promise<RetailRateResult> {
+  return cached("eia:retail-rates", DAY, async () => {
+    const apiKey = process.env["EIA_API_KEY"];
+    const states = targetStates();
+    if (!apiKey) {
+      return {
+        rates: [],
+        dataMonth: "",
+        fetchedAt: new Date().toISOString(),
+        error: "EIA API key is not configured.",
+      } satisfies RetailRateResult;
+    }
+
+    const params = new URLSearchParams();
+    params.set("api_key", apiKey);
+    params.set("frequency", "monthly");
+    params.append("data[0]", "price");
+    params.append("facets[sectorid][]", "COM");
+    for (const s of states) params.append("facets[stateid][]", s.code);
+    params.append("sort[0][column]", "period");
+    params.append("sort[0][direction]", "desc");
+    params.set("length", String(states.length * 14));
+
+    try {
+      const res = await fetch(
+        `https://api.eia.gov/v2/electricity/retail-sales/data/?${params.toString()}`,
+      );
+      if (!res.ok) throw new Error(`EIA responded ${res.status}`);
+      const json = (await res.json()) as {
+        response?: { data?: { period: string; stateid: string; price: string | number }[] };
+      };
+      const rows = json.response?.data ?? [];
+
+      const byState = new Map<string, { period: string; rateCents: number }[]>();
+      for (const r of rows) {
+        const price = typeof r.price === "string" ? Number.parseFloat(r.price) : r.price;
+        if (!Number.isFinite(price)) continue;
+        const list = byState.get(r.stateid) ?? [];
+        list.push({ period: r.period, rateCents: price });
+        byState.set(r.stateid, list);
+      }
+
+      const rates: StateRate[] = [];
+      for (const s of states) {
+        const list = (byState.get(s.code) ?? []).sort((a, b) => a.period.localeCompare(b.period));
+        const latest = list[list.length - 1];
+        if (!latest) continue;
+        const prior = list[Math.max(0, list.length - 4)];
+        const trendPct =
+          prior && prior !== latest && prior.rateCents > 0
+            ? (latest.rateCents - prior.rateCents) / prior.rateCents
+            : undefined;
+        rates.push({
+          state: s.code,
+          stateName: s.name,
+          marketStatus: s.status === "partial" ? "partial" : "deregulated",
+          rateCents: latest.rateCents,
+          period: latest.period,
+          trendPct,
+          history: list.slice(-12),
+        });
+      }
+
+      const dataMonth = rates.reduce((m, r) => (r.period > m ? r.period : m), "");
+      return { rates, dataMonth, fetchedAt: new Date().toISOString() } satisfies RetailRateResult;
+    } catch (e) {
+      return {
+        rates: [],
+        dataMonth: "",
+        fetchedAt: new Date().toISOString(),
+        error: e instanceof Error ? e.message : "EIA request failed.",
+      } satisfies RetailRateResult;
+    }
+  });
+}
+
+// ── Census County Business Patterns ───────────────────────────────────
+
+export interface DensityRow {
+  industryKey: string;
+  state: string;
+  establishments: number;
+  employees?: number;
+}
+
+export interface DensityResult {
+  rows: DensityRow[];
+  vintage: string;
+  fetchedAt: string;
+  error?: string;
+}
+
+async function fetchIndustryDensity(industryKey: string, apiKey: string): Promise<DensityRow[]> {
+  const naics = naicsForIndustry(industryKey);
+  if (!naics) return [];
+  const url =
+    `https://api.census.gov/data/${CBP_VINTAGE.year}/cbp?get=ESTAB,EMP&for=state:*` +
+    `&NAICS2022=${encodeURIComponent(naics.naics)}&key=${apiKey}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Census responded ${res.status}`);
+  const text = await res.text();
+  if (!text.trim().startsWith("[")) {
+    throw new Error("Census rejected the request (check that the API key is activated).");
+  }
+  const table = JSON.parse(text) as string[][];
+  const [header, ...body] = table;
+  if (!header) return [];
+  const iEstab = header.indexOf("ESTAB");
+  const iEmp = header.indexOf("EMP");
+  const iState = header.indexOf("state");
+
+  const fipsToCode = new Map(Object.entries(STATE_FIPS).map(([c, f]) => [f, c]));
+  const rows: DensityRow[] = [];
+  for (const r of body) {
+    const code = fipsToCode.get(r[iState] ?? "");
+    if (!code) continue;
+    const estab = Number.parseInt(r[iEstab] ?? "", 10);
+    if (!Number.isFinite(estab)) continue;
+    const emp = Number.parseInt(r[iEmp] ?? "", 10);
+    rows.push({
+      industryKey,
+      state: code,
+      establishments: estab,
+      ...(Number.isFinite(emp) ? { employees: emp } : {}),
+    });
+  }
+  return rows;
+}
+
+export async function fetchEstablishmentDensity(): Promise<DensityResult> {
+  return cached("census:cbp-density", 7 * DAY, async () => {
+    const apiKey = process.env["CENSUS_API_KEY"];
+    if (!apiKey) {
+      return {
+        rows: [],
+        vintage: CBP_VINTAGE.dataLabel,
+        fetchedAt: new Date().toISOString(),
+        error: "Census API key is not configured.",
+      } satisfies DensityResult;
+    }
+
+    const results = await Promise.allSettled(
+      NAICS_MAP.map((n) => fetchIndustryDensity(n.key, apiKey)),
+    );
+    const rows = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+    const firstError = results.find((r) => r.status === "rejected") as
+      | PromiseRejectedResult
+      | undefined;
+
+    return {
+      rows,
+      vintage: CBP_VINTAGE.dataLabel,
+      fetchedAt: new Date().toISOString(),
+      ...(rows.length === 0 && firstError
+        ? {
+            error:
+              firstError.reason instanceof Error
+                ? firstError.reason.message
+                : "Census request failed.",
+          }
+        : {}),
+    } satisfies DensityResult;
+  });
+}
