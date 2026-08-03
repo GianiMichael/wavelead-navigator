@@ -673,9 +673,11 @@ function IsoWholesalePanel() {
       )}
 
       <p className="mt-3 text-[11px]" style={{ color: "var(--cc-muted)" }}>
-        Source: GridStatus.io real-time ISO/RTO locational prices · cached once daily and shared
-        across all visitors · last refresh {stamp(data?.lastUpdated ?? null)}.
+        Source: GridStatus.io — day-ahead hourly hub prices, real-time comparison, and ISO load ·
+        cached on a shared schedule for all visitors · last refresh{" "}
+        {stamp(data?.lastUpdated ?? null)}.
       </p>
+
     </div>
   );
 }
