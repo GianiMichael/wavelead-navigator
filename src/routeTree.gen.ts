@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PipelineRouteImport } from './routes/pipeline'
+import { Route as PriorityTargetsRouteImport } from './routes/priority-targets'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const PipelineRoute = PipelineRouteImport.update({
   path: '/pipeline',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PriorityTargetsRoute = PriorityTargetsRouteImport.update({
+  id: '/priority-targets',
+  path: '/priority-targets',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/pipeline': typeof PipelineRoute
+  '/priority-targets': typeof PriorityTargetsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/pipeline': typeof PipelineRoute
+  '/priority-targets': typeof PriorityTargetsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/pipeline': typeof PipelineRoute
+  '/priority-targets': typeof PriorityTargetsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/pipeline'
+  fullPaths: '/' | '/pipeline' | '/priority-targets'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/pipeline'
-  id: '__root__' | '/' | '/pipeline'
+  to: '/' | '/pipeline' | '/priority-targets'
+  id: '__root__' | '/' | '/pipeline' | '/priority-targets'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PipelineRoute: typeof PipelineRoute
+  PriorityTargetsRoute: typeof PriorityTargetsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,23 +75,21 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PipelineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/priority-targets': {
+      id: '/priority-targets'
+      path: '/priority-targets'
+      fullPath: '/priority-targets'
+      preLoaderRoute: typeof PriorityTargetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PipelineRoute: PipelineRoute,
+  PriorityTargetsRoute: PriorityTargetsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

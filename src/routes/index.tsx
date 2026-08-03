@@ -316,6 +316,12 @@ function LeadEngine() {
               >
                 Pipeline
               </Link>
+              <Link
+                to="/priority-targets"
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Priority Targets
+              </Link>
             </nav>
           </div>
         </header>
