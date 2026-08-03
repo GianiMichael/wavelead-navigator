@@ -226,7 +226,7 @@ function IntensityPanel({ onSelect }: { onSelect: (industryKey: string) => void 
     <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
-          Total combined energy intensity (kBtu/sq ft)
+          Total combined energy intensity (kBtu/sq ft/year)
         </div>
         <span
           className="rounded-full border border-white/12 px-2 py-0.5 text-[10px]"
