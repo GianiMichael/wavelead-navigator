@@ -20,7 +20,7 @@ export const ISO_REGIONS: IsoRegion[] = [
   {
     code: "ERCOT",
     name: "ERCOT (Texas)",
-    dataset: "ercot_spp_real_time_15_min",
+    dataset: "ercot_spp_day_ahead_hourly",
     hub: "HB_HOUSTON",
     hubLabel: "Houston Hub",
     priceColumn: "spp",
@@ -29,7 +29,7 @@ export const ISO_REGIONS: IsoRegion[] = [
   {
     code: "PJM",
     name: "PJM (Mid-Atlantic)",
-    dataset: "pjm_lmp_real_time_5_min",
+    dataset: "pjm_lmp_day_ahead_hourly",
     hub: "WESTERN HUB",
     hubLabel: "Western Hub",
     priceColumn: "lmp",
@@ -38,7 +38,7 @@ export const ISO_REGIONS: IsoRegion[] = [
   {
     code: "NYISO",
     name: "NYISO (New York)",
-    dataset: "nyiso_lmp_real_time_5_min",
+    dataset: "nyiso_lmp_day_ahead_hourly",
     hub: "N.Y.C.",
     hubLabel: "N.Y.C. Zone",
     priceColumn: "lmp",
@@ -47,7 +47,7 @@ export const ISO_REGIONS: IsoRegion[] = [
   {
     code: "ISONE",
     name: "ISO-NE (New England)",
-    dataset: "isone_lmp_real_time_5_min",
+    dataset: "isone_lmp_day_ahead_hourly",
     hub: ".H.INTERNAL_HUB",
     hubLabel: "Internal Hub",
     priceColumn: "lmp",
@@ -56,7 +56,7 @@ export const ISO_REGIONS: IsoRegion[] = [
   {
     code: "CAISO",
     name: "CAISO (California)",
-    dataset: "caiso_lmp_real_time_5_min",
+    dataset: "caiso_lmp_day_ahead_hourly",
     hub: "TH_SP15_GEN-APND",
     hubLabel: "SP15 Hub",
     priceColumn: "lmp",
@@ -65,7 +65,7 @@ export const ISO_REGIONS: IsoRegion[] = [
   {
     code: "MISO",
     name: "MISO (Midwest)",
-    dataset: "miso_lmp_real_time_5_min",
+    dataset: "miso_lmp_day_ahead_hourly",
     hub: "INDIANA.HUB",
     hubLabel: "Indiana Hub",
     priceColumn: "lmp",

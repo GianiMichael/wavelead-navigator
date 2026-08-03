@@ -29,18 +29,21 @@ async function fetchIsoPrice(region: IsoRegion, apiKey: string): Promise<IsoPric
     iso_name: region.name,
     hub: region.hubLabel,
     price_mwh: null,
-    market: region.dataset.includes("15_min") ? "Real-time 15-min" : "Real-time 5-min",
+    market: "Day-ahead hourly avg (24h)",
     interval_start: null,
     fetched_at: new Date().toISOString(),
     error: null,
   };
 
+  // Day-ahead hourly is the representative price for a once-daily snapshot:
+  // real-time 5-min LMPs spike on transient congestion and misrepresent a region.
+  const start = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
   const params = new URLSearchParams();
   params.set("api_key", apiKey);
-  params.set("time", "latest");
+  params.set("start_time", start);
   params.set("filter_column", "location");
   params.set("filter_value", region.hub);
-  params.set("limit", "1");
+  params.set("limit", "100");
 
   try {
     const res = await fetch(`${BASE}/${region.dataset}/query?${params.toString()}`, {
@@ -48,23 +51,35 @@ async function fetchIsoPrice(region: IsoRegion, apiKey: string): Promise<IsoPric
     });
     if (!res.ok) throw new Error(`GridStatus responded ${res.status}`);
     const json = (await res.json()) as { data?: Record<string, unknown>[] };
-    const row = json.data?.[0];
-    if (!row) throw new Error("No rows returned for hub.");
+    const all = json.data ?? [];
+    if (!all.length) throw new Error("No rows returned for hub.");
 
-    const raw = row[region.priceColumn] ?? row["lmp"] ?? row["spp"];
-    const price = typeof raw === "string" ? Number.parseFloat(raw) : Number(raw);
-    if (!Number.isFinite(price)) throw new Error("No price value in response.");
+    // Keep the most recent 24 hourly intervals.
+    const sorted = [...all].sort((a, b) =>
+      String(a["interval_start_utc"] ?? "").localeCompare(String(b["interval_start_utc"] ?? "")),
+    );
+    const window = sorted.slice(-24);
 
-    const start = row["interval_start_utc"] ?? row["interval_start_local"] ?? row["time"];
+    const prices = window
+      .map((row) => {
+        const raw = row[region.priceColumn] ?? row["lmp"] ?? row["spp"];
+        return typeof raw === "string" ? Number.parseFloat(raw) : Number(raw);
+      })
+      .filter((n) => Number.isFinite(n));
+    if (!prices.length) throw new Error("No price values in response.");
+
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const first = window[0]?.["interval_start_utc"];
     return {
       ...base,
-      price_mwh: price,
-      interval_start: typeof start === "string" ? new Date(start).toISOString() : null,
+      price_mwh: Math.round(avg * 100) / 100,
+      interval_start: typeof first === "string" ? new Date(first).toISOString() : null,
     };
   } catch (e) {
     return { ...base, error: e instanceof Error ? e.message : "GridStatus request failed." };
   }
 }
+
 
 /** Fetch all ISO hubs and upsert them into the shared cache table. */
 export async function refreshIsoPrices() {
