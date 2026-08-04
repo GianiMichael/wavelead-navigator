@@ -1353,8 +1353,11 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
                 Where the <span className="grad-text">best opportunities</span> are
               </h1>
               <p className="mt-1 text-[11px]" style={{ color: "var(--cc-muted)" }}>
-                CBECS {CBECS_SOURCE.dataDate} intensity · EIA retail rates, data month {dataMonth} ·
-                Census CBP {CBP_VINTAGE.dataLabel}. Government data with reporting lag.
+                Target list refreshes every 2 weeks · generated{" "}
+                {periodDateLabel(data.period.generatedAt)}, next{" "}
+                {periodDateLabel(data.period.nextRefreshAt)}. CBECS {CBECS_SOURCE.dataDate}{" "}
+                intensity · EIA retail rates, data month {dataMonth} · Census CBP{" "}
+                {CBP_VINTAGE.dataLabel}. Government data with reporting lag.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">

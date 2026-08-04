@@ -82,6 +82,19 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [exhausted, setExhausted] = useState(false);
 
+  // Deep link from Market Intel: /app?industry=<key>&location=<state>
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const qIndustry = params.get("industry");
+    const qLocation = params.get("location");
+    if (qIndustry && INDUSTRY_OPTIONS.some((o) => o.key === qIndustry)) {
+      setIndustry(qIndustry);
+      setBusinessType(defaultBusinessType(qIndustry));
+    }
+    if (qLocation) setLocation(qLocation);
+  }, []);
+
   useEffect(() => {
     // Demo Mode never touches the shared cloud tables or real saved data.
     if (demo) {
