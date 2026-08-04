@@ -1174,7 +1174,10 @@ function RunnersUp({
                   {r.industryLabel} <span style={{ color: "var(--cc-muted)" }}>· {r.stateName}</span>
                 </span>
                 <span className="text-xs tabular-nums" style={{ color: "var(--cc-muted)" }}>
-                  {r.annualSpendUsd !== undefined ? `${formatUsd(r.annualSpendUsd)}/yr per site` : "—"} ·{" "}
+                  {r.annualSpendUsd !== undefined
+                    ? `${formatUsd(monthlySpend(r.annualSpendUsd))}/mo per site`
+                    : "—"}{" "}
+                  ·{" "}
                   {r.rateCents !== undefined ? `${r.rateCents.toFixed(1)}¢` : "—"}
                 </span>
                 <span
