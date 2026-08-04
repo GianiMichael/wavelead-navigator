@@ -228,7 +228,7 @@ export function PipelinePage({ demo = false }: { demo?: boolean }) {
             ].map((s) => (
               <div key={s.label} className="glass-panel glass-hover rounded-2xl p-6">
                 <div
-                  className={`stat-number ${s.accent ? "grad-text" : ""}`}
+                  className={`stat-number ${s.accent ? "text-primary" : ""}`}
                   style={s.accent ? undefined : { color: "var(--cc-fg)" }}
                 >
                   {s.value}
