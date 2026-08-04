@@ -15,22 +15,17 @@ Keep the dark command-center aesthetic and the existing color scheme, but make t
 - The "Refresh status" button and filter chips in Pipeline use the same solid primary treatment when active.
 - Inline gradient styles in `MarketIntelPage.tsx` for the "Start Prospecting" link are replaced with the same solid primary class.
 
-### 3. Gradient text
-- `grad-text` is reserved for one headline accent per page instead of every stat block.
-- Remove `grad-text` from `StatBlock` accent numbers; use `text-foreground` or `text-primary` instead.
+### 3. Major gradient text only
 - Keep `grad-text` on the hero phrases "deregulated markets" / "open markets" / "best opportunities" because those are the signature brand moments.
+- Remove `grad-text` from `StatBlock` accent numbers; use `text-foreground` or `text-primary` instead.
+- Leave chart bars, rate bars, and distribution bars unchanged.
 
-### 4. Charts and bars
-- Rate bars in the state rates panel switch from the inline gradient to a solid `bg-primary`.
-- Industry distribution bars in Pipeline switch from `grad-fill` to `bg-primary`.
-- Map metric legends and any other small bar indicators use solid colors.
-
-### 5. Files to edit
+### 4. Files to edit
 - `src/styles.css` — redefine `--cc-grad`, add a subtle solid primary hover utility if needed.
 - `src/components/StatBlock.tsx` — remove `grad-text` from accent state.
 - `src/pages/LeadEnginePage.tsx` — replace `grad-fill` button with solid primary.
-- `src/pages/PipelinePage.tsx` — replace `grad-fill` on sync button, active chips, and distribution bars.
-- `src/pages/MarketIntelPage.tsx` — replace inline gradients on ProspectLink and rate bars; keep only hero word accents.
+- `src/pages/PipelinePage.tsx` — replace `grad-fill` on sync button and active chips.
+- `src/pages/MarketIntelPage.tsx` — replace inline gradient on ProspectLink; keep only hero word accents.
 - `src/routes/index.tsx` — replace `grad-fill` buttons with solid primary.
 
 ## Outcome
