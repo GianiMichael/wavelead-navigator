@@ -379,7 +379,7 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
                 to={demo ? "/demo/priority-targets" : "/priority-targets"}
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
-                Priority Targets
+                Market Intel
               </Link>
             </nav>
           </div>
@@ -449,7 +449,7 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
                   </div>
                 </div>
                 <Button
-                  className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="glass-btn rounded-full bg-transparent"
                   onClick={handleSearch}
                   disabled={searching || !businessType || !location}
                 >

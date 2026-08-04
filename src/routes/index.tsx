@@ -96,7 +96,7 @@ function LandingPage() {
                   calls, no outreach sent.
                 </p>
                 <Button
-                  className="mt-5 rounded-full bg-primary font-medium text-primary-foreground hover:bg-primary/90"
+                  className="glass-btn mt-5 rounded-full bg-transparent font-medium"
                   onClick={() => navigate({ to: "/demo/app" })}
                 >
                   View Demo
@@ -143,7 +143,7 @@ function LandingPage() {
                 <Button
                   type="submit"
                   disabled={busy}
-                  className="w-full rounded-full bg-primary font-medium text-primary-foreground hover:bg-primary/90"
+                  className="glass-btn w-full rounded-full bg-transparent font-medium"
                 >
                   {busy ? "Working…" : "Sign in to Lead Engine"}
                 </Button>

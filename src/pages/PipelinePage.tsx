@@ -150,7 +150,7 @@ export function PipelinePage({ demo = false }: { demo?: boolean }) {
   function chip(active: boolean) {
     return `rounded-full border px-3 py-1 text-xs transition-all duration-200 ${
       active
-        ? "border-transparent bg-primary font-medium text-primary-foreground"
+        ? "glass-btn glass-btn-active font-medium"
         : "border-white/15 bg-white/5 text-white/60 hover:text-white"
     }`;
   }
@@ -190,12 +190,12 @@ export function PipelinePage({ demo = false }: { demo?: boolean }) {
                 to={demo ? "/demo/priority-targets" : "/priority-targets"}
                 className="text-white/60 transition-colors hover:text-white"
               >
-                Priority Targets
+                Market Intel
               </Link>
               <button
                 onClick={() => void sync(records)}
                 disabled={syncing || demo}
-                className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                className="glass-btn rounded-full px-4 py-2 text-xs font-medium"
               >
                 {syncing ? "Syncing…" : "Refresh status"}
               </button>
@@ -228,7 +228,7 @@ export function PipelinePage({ demo = false }: { demo?: boolean }) {
             ].map((s) => (
               <div key={s.label} className="glass-panel glass-hover rounded-2xl p-6">
                 <div
-                  className={`stat-number ${s.accent ? "text-primary" : ""}`}
+                  className={`stat-number ${s.accent ? "grad-text" : ""}`}
                   style={s.accent ? undefined : { color: "var(--cc-fg)" }}
                 >
                   {s.value}

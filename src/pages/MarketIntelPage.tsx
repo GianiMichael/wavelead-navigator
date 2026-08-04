@@ -86,7 +86,7 @@ function ProspectLink({
       onClick={(e) => e.stopPropagation()}
       className={
         className ??
-        "inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        "glass-btn inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium"
       }
     >
       {label} →

@@ -9,7 +9,7 @@ export function StatBlock({
 }) {
   return (
     <div className="glass-panel rounded-xl px-5 py-6">
-    <div className={accent ? "stat-number text-primary" : "stat-number text-foreground"}>
+    <div className={accent ? "stat-number grad-text" : "stat-number text-foreground"}>
         {value}
       </div>
       <div className="eyebrow mt-3">{label}</div>
