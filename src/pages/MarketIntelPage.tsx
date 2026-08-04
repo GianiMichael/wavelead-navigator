@@ -86,12 +86,7 @@ function ProspectLink({
       onClick={(e) => e.stopPropagation()}
       className={
         className ??
-        "inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium text-black transition-opacity hover:opacity-90"
-      }
-      style={
-        className
-          ? undefined
-          : { background: "linear-gradient(90deg, oklch(0.62 0.24 300), oklch(0.82 0.15 55))" }
+        "inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
       }
     >
       {label} →

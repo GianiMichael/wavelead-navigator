@@ -449,7 +449,7 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
                   </div>
                 </div>
                 <Button
-                  className="grad-fill rounded-full border-0 text-white hover:opacity-90"
+                  className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={handleSearch}
                   disabled={searching || !businessType || !location}
                 >
