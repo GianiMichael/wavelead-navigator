@@ -325,7 +325,7 @@ function buildTalkingPoint(
 ): string {
   const size =
     layer1.annualSpendUsd !== undefined
-      ? `Typical spend ~${formatUsd(layer1.annualSpendUsd)}/year per site`
+      ? `Typical spend ~${formatUsd(monthlySpend(layer1.annualSpendUsd))}/month per site (~${formatUsdCompact(layer1.annualSpendUsd)}/year)`
       : `${input.industryLabel} sites in ${input.stateName}`;
   const urgency = layer2.notes.length ? layer2.notes.join(", ") : "no live price movement right now";
   return `${size}, ${urgency}.`;
