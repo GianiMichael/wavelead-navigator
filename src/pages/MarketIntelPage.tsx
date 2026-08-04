@@ -984,6 +984,10 @@ function DetailPanel({
 
   const stats: { label: string; value: string }[] = [
     {
+      label: "Est. annual spend / facility",
+      value: row.annualSpendUsd !== undefined ? `${formatUsd(row.annualSpendUsd)}/year` : "n/a",
+    },
+    {
       label: "Commercial electricity rate",
       value: row.rateCents !== undefined ? `${row.rateCents.toFixed(2)}¢/kWh` : "n/a",
     },
@@ -996,7 +1000,9 @@ function DetailPanel({
       label: "Establishments",
       value: row.establishments !== undefined ? row.establishments.toLocaleString() : "n/a",
     },
-    { label: "Priority score", value: `${row.score.toFixed(0)} / 100` },
+    { label: "Layer 1 — baseline fit", value: `${(row.baselineFit * 100).toFixed(0)} / 100` },
+    { label: "Layer 2 — live urgency", value: `${(row.urgency * 100).toFixed(0)} / 100` },
+    { label: "Combined (gated)", value: `${row.score.toFixed(0)} / 100` },
     { label: "Market", value: row.marketStatus === "partial" ? "Partially deregulated" : "Deregulated" },
   ];
 
@@ -1039,6 +1045,11 @@ function DetailPanel({
           {naics ? `NAICS ${naics.naics}. ` : ""}
           {electricReason(row)}
         </p>
+
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/4 p-3">
+          <div className="eyebrow text-[10px]">Why now</div>
+          <p className="mt-1.5 text-xs">{row.talkingPoint}</p>
+        </div>
 
         <div className="mt-6">
           {rate ? (
