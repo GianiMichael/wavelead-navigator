@@ -11,7 +11,8 @@ import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
 
 import { getIsoPrices } from "@/lib/iso-prices.functions";
 import { getGridDemand, getMarketIntel } from "@/lib/market-intel.functions";
-import { bandLabel, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
+import { bandLabel, formatUsd, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
+import { periodDateLabel, type TargetPeriod } from "@/lib/target-period";
 
 export const intelQuery = queryOptions({
   queryKey: ["market-intel"],
@@ -57,19 +58,60 @@ function electricReason(r: ScoreResult) {
   return r.reason.replace("¢/kWh commercial rate", "¢/kWh commercial electricity rate");
 }
 
-/* ── 1. Hero: today's top pick ──────────────────────────────────── */
+/* ── 1. Hero: this period's #1 target ───────────────────────────── */
 
-function HeroCard({ row, onOpen }: { row: ScoreResult; onOpen: () => void }) {
+/** Deep-links into Prospect Search with the industry + area pre-filled. */
+function ProspectLink({
+  row,
+  demo,
+  className,
+  label = "Start Prospecting",
+}: {
+  row: ScoreResult;
+  demo: boolean;
+  className?: string;
+  label?: string;
+}) {
+  return (
+    <a
+      href={`${demo ? "/demo/app" : "/app"}?industry=${encodeURIComponent(row.industryKey)}&location=${encodeURIComponent(row.stateName)}`}
+      onClick={(e) => e.stopPropagation()}
+      className={
+        className ??
+        "inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium text-black transition-opacity hover:opacity-90"
+      }
+      style={
+        className
+          ? undefined
+          : { background: "linear-gradient(90deg, oklch(0.62 0.24 300), oklch(0.82 0.15 55))" }
+      }
+    >
+      {label} →
+    </a>
+  );
+}
+
+function HeroCard({
+  row,
+  period,
+  demo,
+  onOpen,
+}: {
+  row: ScoreResult;
+  period: TargetPeriod;
+  demo: boolean;
+  onOpen: () => void;
+}) {
   const stats = [
+    {
+      label: "Est. annual electricity spend",
+      value: row.annualSpendUsd !== undefined ? formatUsd(row.annualSpendUsd) : "n/a",
+      unit: "per typical facility",
+    },
     {
       label: "Commercial electricity rate",
       value: row.rateCents !== undefined ? `${row.rateCents.toFixed(2)}¢` : "n/a",
       unit: "per kWh",
-    },
-    {
-      label: "Energy intensity",
-      value: euiFor(row) ? `${euiFor(row)}` : "n/a",
-      unit: "kBtu/sq ft/year",
     },
     {
       label: "Rate trend",
@@ -87,24 +129,39 @@ function HeroCard({ row, onOpen }: { row: ScoreResult; onOpen: () => void }) {
   ];
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
-      className="glass-panel block w-full rounded-3xl p-6 text-left transition-colors hover:bg-white/6 sm:p-8"
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpen()}
+      className="glass-panel block w-full cursor-pointer rounded-3xl p-6 text-left transition-colors hover:bg-white/6 sm:p-8"
     >
       <div className="flex flex-wrap items-center gap-3">
         <span className="eyebrow" style={{ color: "var(--cc-muted)" }}>
-          Today's top pick
+          This period&apos;s target list · #1
         </span>
         <span
           className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${bandTone(row.band)}`}
         >
           {bandLabel(row.band)} priority · {row.score.toFixed(0)}
         </span>
+        <span className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
+          Generated {periodDateLabel(period.generatedAt)} · next refresh{" "}
+          {periodDateLabel(period.nextRefreshAt)}
+        </span>
       </div>
 
       <h2 className="headline mt-3 text-3xl sm:text-4xl">
         <span className="grad-text">{row.industryLabel}</span> in {row.stateName}
       </h2>
+
+      {row.annualSpendUsd !== undefined && (
+        <p className="mt-2 text-sm" style={{ color: "var(--cc-muted)" }}>
+          A typical {row.industryLabel.replace(/ \/.*$/, "")} site in {row.stateName} spends an
+          estimated <span className="font-semibold text-white">{formatUsd(row.annualSpendUsd)}/year</span>{" "}
+          on electricity.
+        </p>
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
@@ -118,10 +175,20 @@ function HeroCard({ row, onOpen }: { row: ScoreResult; onOpen: () => void }) {
         ))}
       </div>
 
-      <p className="mt-5 text-sm" style={{ color: "var(--cc-muted)" }}>
-        {electricReason(row)}
-      </p>
-    </button>
+      <div className="mt-5 rounded-2xl border border-white/10 bg-white/4 p-4">
+        <div className="eyebrow text-[10px]">Why now</div>
+        <p className="mt-1.5 text-sm">{row.talkingPoint}</p>
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <ProspectLink row={row} demo={demo} />
+        <span className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
+          Layer 1 fit {(row.baselineFit * 100).toFixed(0)} · Layer 2 urgency{" "}
+          {(row.urgency * 100).toFixed(0)}
+          {row.gated ? " · gated (one layer weak)" : ""}
+        </span>
+      </div>
+    </div>
   );
 }
 
