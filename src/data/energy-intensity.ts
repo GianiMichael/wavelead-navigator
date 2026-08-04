@@ -17,6 +17,10 @@ export interface EnergyIntensityEntry {
   cbecsActivity: string;
   /** Approximate site EUI in kBtu/sq ft from the survey. */
   siteEui?: number;
+  /** Typical (mean) floor area of one facility, sq ft. CBECS building size. */
+  avgSqFt?: number;
+  /** Share of site energy delivered as electricity (rest is mostly gas). */
+  electricShare?: number;
 }
 
 export const CBECS_SOURCE = {
@@ -33,6 +37,8 @@ export const ENERGY_INTENSITY: EnergyIntensityEntry[] = [
     score: 10,
     cbecsActivity: "Food service",
     siteEui: 262,
+    avgSqFt: 5600,
+    electricShare: 0.4,
   },
   {
     key: "grocery",
@@ -40,6 +46,8 @@ export const ENERGY_INTENSITY: EnergyIntensityEntry[] = [
     score: 9.4,
     cbecsActivity: "Food sales",
     siteEui: 197,
+    avgSqFt: 6500,
+    electricShare: 0.65,
   },
   {
     key: "healthcare",
@@ -47,6 +55,8 @@ export const ENERGY_INTENSITY: EnergyIntensityEntry[] = [
     score: 8.8,
     cbecsActivity: "Inpatient health care",
     siteEui: 170,
+    avgSqFt: 120000,
+    electricShare: 0.45,
   },
   {
     key: "data_center",
@@ -54,6 +64,8 @@ export const ENERGY_INTENSITY: EnergyIntensityEntry[] = [
     score: 8.2,
     cbecsActivity: "Other — data center",
     siteEui: 155,
+    avgSqFt: 25000,
+    electricShare: 0.9,
   },
   {
     key: "cold_storage",
@@ -61,6 +73,8 @@ export const ENERGY_INTENSITY: EnergyIntensityEntry[] = [
     score: 7.1,
     cbecsActivity: "Refrigerated warehouse",
     siteEui: 96,
+    avgSqFt: 40000,
+    electricShare: 0.75,
   },
   {
     key: "manufacturing",
@@ -68,6 +82,8 @@ export const ENERGY_INTENSITY: EnergyIntensityEntry[] = [
     score: 6.5,
     cbecsActivity: "Industrial / non-office manufacturing support",
     siteEui: 88,
+    avgSqFt: 30000,
+    electricShare: 0.55,
   },
   {
     key: "hospitality",
@@ -75,6 +91,8 @@ export const ENERGY_INTENSITY: EnergyIntensityEntry[] = [
     score: 5.6,
     cbecsActivity: "Lodging",
     siteEui: 74,
+    avgSqFt: 40000,
+    electricShare: 0.5,
   },
   {
     key: "car_wash",
@@ -82,6 +100,8 @@ export const ENERGY_INTENSITY: EnergyIntensityEntry[] = [
     score: 4.4,
     cbecsActivity: "Service (vehicle repair / service)",
     siteEui: 58,
+    avgSqFt: 6000,
+    electricShare: 0.6,
   },
   {
     key: "multi_site_retail",
@@ -89,6 +109,8 @@ export const ENERGY_INTENSITY: EnergyIntensityEntry[] = [
     score: 3.6,
     cbecsActivity: "Retail (other than mall)",
     siteEui: 49,
+    avgSqFt: 12000,
+    electricShare: 0.7,
   },
   {
     key: "education",
@@ -96,6 +118,8 @@ export const ENERGY_INTENSITY: EnergyIntensityEntry[] = [
     score: 3.0,
     cbecsActivity: "Education",
     siteEui: 42,
+    avgSqFt: 30000,
+    electricShare: 0.5,
   },
 ];
 

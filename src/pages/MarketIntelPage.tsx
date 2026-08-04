@@ -11,7 +11,8 @@ import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
 
 import { getIsoPrices } from "@/lib/iso-prices.functions";
 import { getGridDemand, getMarketIntel } from "@/lib/market-intel.functions";
-import { bandLabel, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
+import { bandLabel, formatUsd, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
+import { periodDateLabel, type TargetPeriod } from "@/lib/target-period";
 
 export const intelQuery = queryOptions({
   queryKey: ["market-intel"],
@@ -57,19 +58,60 @@ function electricReason(r: ScoreResult) {
   return r.reason.replace("¢/kWh commercial rate", "¢/kWh commercial electricity rate");
 }
 
-/* ── 1. Hero: today's top pick ──────────────────────────────────── */
+/* ── 1. Hero: this period's #1 target ───────────────────────────── */
 
-function HeroCard({ row, onOpen }: { row: ScoreResult; onOpen: () => void }) {
+/** Deep-links into Prospect Search with the industry + area pre-filled. */
+function ProspectLink({
+  row,
+  demo,
+  className,
+  label = "Start Prospecting",
+}: {
+  row: ScoreResult;
+  demo: boolean;
+  className?: string;
+  label?: string;
+}) {
+  return (
+    <a
+      href={`${demo ? "/demo/app" : "/app"}?industry=${encodeURIComponent(row.industryKey)}&location=${encodeURIComponent(row.stateName)}`}
+      onClick={(e) => e.stopPropagation()}
+      className={
+        className ??
+        "inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium text-black transition-opacity hover:opacity-90"
+      }
+      style={
+        className
+          ? undefined
+          : { background: "linear-gradient(90deg, oklch(0.62 0.24 300), oklch(0.82 0.15 55))" }
+      }
+    >
+      {label} →
+    </a>
+  );
+}
+
+function HeroCard({
+  row,
+  period,
+  demo,
+  onOpen,
+}: {
+  row: ScoreResult;
+  period: TargetPeriod;
+  demo: boolean;
+  onOpen: () => void;
+}) {
   const stats = [
+    {
+      label: "Est. annual electricity spend",
+      value: row.annualSpendUsd !== undefined ? formatUsd(row.annualSpendUsd) : "n/a",
+      unit: "per typical facility",
+    },
     {
       label: "Commercial electricity rate",
       value: row.rateCents !== undefined ? `${row.rateCents.toFixed(2)}¢` : "n/a",
       unit: "per kWh",
-    },
-    {
-      label: "Energy intensity",
-      value: euiFor(row) ? `${euiFor(row)}` : "n/a",
-      unit: "kBtu/sq ft/year",
     },
     {
       label: "Rate trend",
@@ -87,24 +129,39 @@ function HeroCard({ row, onOpen }: { row: ScoreResult; onOpen: () => void }) {
   ];
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
-      className="glass-panel block w-full rounded-3xl p-6 text-left transition-colors hover:bg-white/6 sm:p-8"
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpen()}
+      className="glass-panel block w-full cursor-pointer rounded-3xl p-6 text-left transition-colors hover:bg-white/6 sm:p-8"
     >
       <div className="flex flex-wrap items-center gap-3">
         <span className="eyebrow" style={{ color: "var(--cc-muted)" }}>
-          Today's top pick
+          This period&apos;s target list · #1
         </span>
         <span
           className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${bandTone(row.band)}`}
         >
           {bandLabel(row.band)} priority · {row.score.toFixed(0)}
         </span>
+        <span className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
+          Generated {periodDateLabel(period.generatedAt)} · next refresh{" "}
+          {periodDateLabel(period.nextRefreshAt)}
+        </span>
       </div>
 
       <h2 className="headline mt-3 text-3xl sm:text-4xl">
         <span className="grad-text">{row.industryLabel}</span> in {row.stateName}
       </h2>
+
+      {row.annualSpendUsd !== undefined && (
+        <p className="mt-2 text-sm" style={{ color: "var(--cc-muted)" }}>
+          A typical {row.industryLabel.replace(/ \/.*$/, "")} site in {row.stateName} spends an
+          estimated <span className="font-semibold text-white">{formatUsd(row.annualSpendUsd)}/year</span>{" "}
+          on electricity.
+        </p>
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
@@ -118,10 +175,20 @@ function HeroCard({ row, onOpen }: { row: ScoreResult; onOpen: () => void }) {
         ))}
       </div>
 
-      <p className="mt-5 text-sm" style={{ color: "var(--cc-muted)" }}>
-        {electricReason(row)}
-      </p>
-    </button>
+      <div className="mt-5 rounded-2xl border border-white/10 bg-white/4 p-4">
+        <div className="eyebrow text-[10px]">Why now</div>
+        <p className="mt-1.5 text-sm">{row.talkingPoint}</p>
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <ProspectLink row={row} demo={demo} />
+        <span className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
+          Layer 1 fit {(row.baselineFit * 100).toFixed(0)} · Layer 2 urgency{" "}
+          {(row.urgency * 100).toFixed(0)}
+          {row.gated ? " · gated (one layer weak)" : ""}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -917,6 +984,10 @@ function DetailPanel({
 
   const stats: { label: string; value: string }[] = [
     {
+      label: "Est. annual spend / facility",
+      value: row.annualSpendUsd !== undefined ? `${formatUsd(row.annualSpendUsd)}/year` : "n/a",
+    },
+    {
       label: "Commercial electricity rate",
       value: row.rateCents !== undefined ? `${row.rateCents.toFixed(2)}¢/kWh` : "n/a",
     },
@@ -929,7 +1000,9 @@ function DetailPanel({
       label: "Establishments",
       value: row.establishments !== undefined ? row.establishments.toLocaleString() : "n/a",
     },
-    { label: "Priority score", value: `${row.score.toFixed(0)} / 100` },
+    { label: "Layer 1 — baseline fit", value: `${(row.baselineFit * 100).toFixed(0)} / 100` },
+    { label: "Layer 2 — live urgency", value: `${(row.urgency * 100).toFixed(0)} / 100` },
+    { label: "Combined (gated)", value: `${row.score.toFixed(0)} / 100` },
     { label: "Market", value: row.marketStatus === "partial" ? "Partially deregulated" : "Deregulated" },
   ];
 
@@ -973,6 +1046,11 @@ function DetailPanel({
           {electricReason(row)}
         </p>
 
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/4 p-3">
+          <div className="eyebrow text-[10px]">Why now</div>
+          <p className="mt-1.5 text-xs">{row.talkingPoint}</p>
+        </div>
+
         <div className="mt-6">
           {rate ? (
             <RateHistoryChart
@@ -1007,7 +1085,15 @@ function DetailPanel({
 
 /* ── Runners-up (ranks 2-11) ────────────────────────────────────── */
 
-function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreResult) => void }) {
+function RunnersUp({
+  rows,
+  demo,
+  onOpen,
+}: {
+  rows: ScoreResult[];
+  demo: boolean;
+  onOpen: (r: ScoreResult) => void;
+}) {
   const [open, setOpen] = useState(false);
   if (rows.length === 0) return null;
 
@@ -1024,10 +1110,13 @@ function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreRes
       {open && (
         <ul className="mt-3 space-y-1">
           {rows.map((r, i) => (
-            <li key={`${r.industryKey}-${r.state}`}>
+            <li
+              key={`${r.industryKey}-${r.state}`}
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-white/8 bg-white/3 pr-3 transition-colors hover:bg-white/8"
+            >
               <button
                 onClick={() => onOpen(r)}
-                className="grid w-full grid-cols-[1.4rem_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-xl border border-white/8 bg-white/3 px-3 py-2.5 text-left transition-colors hover:bg-white/8"
+                className="grid w-full grid-cols-[1.4rem_minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-2.5 text-left"
               >
                 <span className="text-[11px] tabular-nums" style={{ color: "var(--cc-muted)" }}>
                   {i + 2}
@@ -1036,8 +1125,8 @@ function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreRes
                   {r.industryLabel} <span style={{ color: "var(--cc-muted)" }}>· {r.stateName}</span>
                 </span>
                 <span className="text-xs tabular-nums" style={{ color: "var(--cc-muted)" }}>
-                  {r.rateCents !== undefined ? `${r.rateCents.toFixed(1)}¢` : "—"} ·{" "}
-                  {euiFor(r) ? `${euiFor(r)} kBtu/sq ft/year` : "—"}
+                  {r.annualSpendUsd !== undefined ? `${formatUsd(r.annualSpendUsd)}/yr per site` : "—"} ·{" "}
+                  {r.rateCents !== undefined ? `${r.rateCents.toFixed(1)}¢` : "—"}
                 </span>
                 <span
                   className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${bandTone(r.band)}`}
@@ -1045,6 +1134,12 @@ function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreRes
                   {r.score.toFixed(0)}
                 </span>
               </button>
+              <ProspectLink
+                row={r}
+                demo={demo}
+                label="Prospect"
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-white/80 hover:bg-white/10 hover:text-white"
+              />
             </li>
           ))}
         </ul>
@@ -1052,6 +1147,7 @@ function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreRes
     </div>
   );
 }
+
 
 /* ── U.S. rate choropleth ───────────────────────────────────────── */
 
@@ -1173,14 +1269,20 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
 
   const industries = rankedIntensity();
 
+  const unfiltered = industryFilter === "all" && bandFilter === "all";
+
+  /**
+   * Unfiltered view shows the frozen biweekly target list; filtering falls
+   * back to the live leaderboard so drill-down still works.
+   */
   const rows = useMemo(
     () =>
-      data.leaderboard.filter(
+      (unfiltered ? data.targetList : data.leaderboard).filter(
         (r) =>
           (industryFilter === "all" || r.industryKey === industryFilter) &&
           (bandFilter === "all" || r.band === bandFilter),
       ),
-    [data.leaderboard, industryFilter, bandFilter],
+    [data.leaderboard, data.targetList, unfiltered, industryFilter, bandFilter],
   );
 
   const topPick = rows[0];
@@ -1251,8 +1353,11 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
                 Where the <span className="grad-text">best opportunities</span> are
               </h1>
               <p className="mt-1 text-[11px]" style={{ color: "var(--cc-muted)" }}>
-                CBECS {CBECS_SOURCE.dataDate} intensity · EIA retail rates, data month {dataMonth} ·
-                Census CBP {CBP_VINTAGE.dataLabel}. Government data with reporting lag.
+                Target list refreshes every 2 weeks · generated{" "}
+                {periodDateLabel(data.period.generatedAt)}, next{" "}
+                {periodDateLabel(data.period.nextRefreshAt)}. CBECS {CBECS_SOURCE.dataDate}{" "}
+                intensity · EIA retail rates, data month {dataMonth} · Census CBP{" "}
+                {CBP_VINTAGE.dataLabel}. Government data with reporting lag.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
@@ -1292,13 +1397,13 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
 
           <div className="mt-6">
             {topPick ? (
-              <HeroCard row={topPick} onOpen={() => setSelected(topPick)} />
+              <HeroCard row={topPick} period={data.period} demo={demo} onOpen={() => setSelected(topPick)} />
             ) : (
               <div className="glass-panel rounded-3xl p-8 text-sm" style={{ color: "var(--cc-muted)" }}>
                 No industry + state combination matches these filters.
               </div>
             )}
-            <RunnersUp rows={rows.slice(1, 11)} onOpen={(r) => setSelected(r)} />
+            <RunnersUp rows={rows.slice(1, 11)} demo={demo} onOpen={(r) => setSelected(r)} />
           </div>
 
           <div className="mt-5 grid gap-5 lg:grid-cols-3">

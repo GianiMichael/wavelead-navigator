@@ -140,6 +140,30 @@ export type Database = {
         }
         Relationships: []
       }
+      target_lists: {
+        Row: {
+          created_at: string
+          generated_at: string
+          items: Json
+          next_refresh_at: string
+          period_id: string
+        }
+        Insert: {
+          created_at?: string
+          generated_at: string
+          items: Json
+          next_refresh_at: string
+          period_id: string
+        }
+        Update: {
+          created_at?: string
+          generated_at?: string
+          items?: Json
+          next_refresh_at?: string
+          period_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

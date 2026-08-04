@@ -183,3 +183,42 @@ export async function refreshIsoPrices() {
     failed: rows.filter((r) => r.price_mwh === null).map((r) => ({ iso: r.iso, error: r.error })),
   };
 }
+
+/**
+ * Read-only view of the shared cache for scoring (Layer 2 urgency signal).
+ * Never calls GridStatus.
+ */
+export async function readIsoSignals(): Promise<
+  Record<string, { name: string; spreadPct: number | null; priceMwh: number | null }>
+> {
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
+    const supabase = createClient(process.env["SUPABASE_URL"]!, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: {
+        fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+          const h = new Headers(init?.headers);
+          if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`)
+            h.delete("Authorization");
+          h.set("apikey", key);
+          return fetch(input, { ...init, headers: h });
+        },
+      },
+    });
+    const { data } = await supabase
+      .from("iso_wholesale_prices")
+      .select("iso, iso_name, price_mwh, spread_pct");
+    const out: Record<string, { name: string; spreadPct: number | null; priceMwh: number | null }> = {};
+    for (const row of data ?? []) {
+      out[row.iso as string] = {
+        name: (row.iso_name as string) || (row.iso as string),
+        spreadPct: row.spread_pct === null ? null : Number(row.spread_pct),
+        priceMwh: row.price_mwh === null ? null : Number(row.price_mwh),
+      };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
