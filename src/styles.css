@@ -72,9 +72,8 @@
   /* Command-center gradient — used sparingly as the signature accent */
   --cc-grad: linear-gradient(
     100deg,
-    oklch(0.62 0.24 300) 0%,
-    oklch(0.66 0.26 340) 48%,
-    oklch(0.82 0.15 55) 100%
+    oklch(0.55 0.14 300) 0%,
+    oklch(0.72 0.12 55) 100%
   );
 
   --ink: oklch(0.13 0.026 275);
@@ -194,9 +193,8 @@
   --cc-muted: oklch(0.72 0.026 280);
   --cc-grad: linear-gradient(
     100deg,
-    oklch(0.62 0.24 300) 0%,
-    oklch(0.66 0.26 340) 48%,
-    oklch(0.82 0.15 55) 100%
+    oklch(0.55 0.14 300) 0%,
+    oklch(0.72 0.12 55) 100%
   );
   background-color: var(--cc-bg);
   color: var(--cc-fg);
