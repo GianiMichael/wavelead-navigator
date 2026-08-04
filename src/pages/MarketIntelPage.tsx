@@ -12,7 +12,14 @@ import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
 
 import { getIsoPrices, type IsoPrice, type IsoPriceResult } from "@/lib/iso-prices.functions";
 import { getGridDemand, getMarketIntel } from "@/lib/market-intel.functions";
-import { bandLabel, formatUsd, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
+import {
+  bandLabel,
+  formatUsd,
+  formatUsdCompact,
+  monthlySpend,
+  type PriorityBand,
+  type ScoreResult,
+} from "@/lib/priority-score";
 import { periodDateLabel, type TargetPeriod } from "@/lib/target-period";
 
 export const intelQuery = queryOptions({
@@ -103,11 +110,17 @@ function HeroCard({
   demo: boolean;
   onOpen: () => void;
 }) {
-  const stats = [
+  const stats: { label: string; value: string; unit: string; sub?: string }[] = [
     {
-      label: "Est. annual electricity spend",
-      value: row.annualSpendUsd !== undefined ? formatUsd(row.annualSpendUsd) : "n/a",
+      label: "Est. monthly electricity spend",
+      value:
+        row.annualSpendUsd !== undefined
+          ? formatUsd(monthlySpend(row.annualSpendUsd))
+          : "n/a",
       unit: "per typical facility",
+      ...(row.annualSpendUsd !== undefined
+        ? { sub: `~${formatUsdCompact(row.annualSpendUsd)}/year` }
+        : {}),
     },
     {
       label: "Commercial electricity rate",
@@ -159,8 +172,11 @@ function HeroCard({
       {row.annualSpendUsd !== undefined && (
         <p className="mt-2 text-sm" style={{ color: "var(--cc-muted)" }}>
           A typical {row.industryLabel.replace(/ \/.*$/, "")} site in {row.stateName} spends an
-          estimated <span className="font-semibold text-white">{formatUsd(row.annualSpendUsd)}/year</span>{" "}
-          on electricity.
+          estimated{" "}
+          <span className="font-semibold text-white">
+            {formatUsd(monthlySpend(row.annualSpendUsd))}/month
+          </span>{" "}
+          on electricity (~{formatUsdCompact(row.annualSpendUsd)}/year).
         </p>
       )}
 
@@ -168,6 +184,11 @@ function HeroCard({
         {stats.map((s) => (
           <div key={s.label} className="rounded-2xl border border-white/10 bg-white/4 p-4">
             <div className="text-2xl font-semibold tabular-nums sm:text-3xl">{s.value}</div>
+            {s.sub && (
+              <div className="mt-0.5 text-[11px] tabular-nums" style={{ color: "var(--cc-muted)" }}>
+                {s.sub}
+              </div>
+            )}
             <div className="mt-1 text-[11px]" style={{ color: "var(--cc-muted)" }}>
               {s.unit}
             </div>
@@ -175,6 +196,7 @@ function HeroCard({
           </div>
         ))}
       </div>
+
 
       <div className="mt-5 rounded-2xl border border-white/10 bg-white/4 p-4">
         <div className="eyebrow text-[10px]">Why now</div>
@@ -1008,8 +1030,11 @@ function DetailPanel({
 
   const stats: { label: string; value: string }[] = [
     {
-      label: "Est. annual spend / facility",
-      value: row.annualSpendUsd !== undefined ? `${formatUsd(row.annualSpendUsd)}/year` : "n/a",
+      label: "Est. monthly spend / facility",
+      value:
+        row.annualSpendUsd !== undefined
+          ? `${formatUsd(monthlySpend(row.annualSpendUsd))}/month · ~${formatUsdCompact(row.annualSpendUsd)}/year`
+          : "n/a",
     },
     {
       label: "Commercial electricity rate",
@@ -1149,7 +1174,10 @@ function RunnersUp({
                   {r.industryLabel} <span style={{ color: "var(--cc-muted)" }}>· {r.stateName}</span>
                 </span>
                 <span className="text-xs tabular-nums" style={{ color: "var(--cc-muted)" }}>
-                  {r.annualSpendUsd !== undefined ? `${formatUsd(r.annualSpendUsd)}/yr per site` : "—"} ·{" "}
+                  {r.annualSpendUsd !== undefined
+                    ? `${formatUsd(monthlySpend(r.annualSpendUsd))}/mo per site`
+                    : "—"}{" "}
+                  ·{" "}
                   {r.rateCents !== undefined ? `${r.rateCents.toFixed(1)}¢` : "—"}
                 </span>
                 <span

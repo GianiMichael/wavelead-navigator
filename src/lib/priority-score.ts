@@ -241,6 +241,19 @@ export function formatUsd(n: number): string {
   return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
+/** Annual figure → monthly. Monthly is the primary figure shown everywhere. */
+export function monthlySpend(annual: number): number {
+  return annual / 12;
+}
+
+/** Compact dollars for secondary lines, e.g. "$8.2M". */
+export function formatUsdCompact(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `$${(n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
+  if (abs >= 10_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return formatUsd(n);
+}
+
 export function scoreCombination(input: ScoreInputs): ScoreResult {
   const layer1 = computeBaselineFit(input);
   const layer2 = computeUrgency(input);
@@ -280,7 +293,7 @@ function buildReason(input: ScoreInputs, layer1: BaselineFit): string {
 
   if (layer1.annualSpendUsd !== undefined) {
     parts.push(
-      `A typical ${input.industryLabel.replace(/ \/.*$/, "")} site in ${input.stateName} spends an estimated ${formatUsd(layer1.annualSpendUsd)}/year on electricity`,
+      `A typical ${input.industryLabel.replace(/ \/.*$/, "")} site in ${input.stateName} spends an estimated ${formatUsd(monthlySpend(layer1.annualSpendUsd))}/month on electricity (~${formatUsdCompact(layer1.annualSpendUsd)}/year)`,
     );
   } else {
     parts.push(`${input.industryLabel} in ${input.stateName}`);
@@ -312,7 +325,7 @@ function buildTalkingPoint(
 ): string {
   const size =
     layer1.annualSpendUsd !== undefined
-      ? `Typical spend ~${formatUsd(layer1.annualSpendUsd)}/year per site`
+      ? `Typical spend ~${formatUsd(monthlySpend(layer1.annualSpendUsd))}/month per site (~${formatUsdCompact(layer1.annualSpendUsd)}/year)`
       : `${input.industryLabel} sites in ${input.stateName}`;
   const urgency = layer2.notes.length ? layer2.notes.join(", ") : "no live price movement right now";
   return `${size}, ${urgency}.`;
