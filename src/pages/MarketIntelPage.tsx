@@ -1074,7 +1074,15 @@ function DetailPanel({
 
 /* ── Runners-up (ranks 2-11) ────────────────────────────────────── */
 
-function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreResult) => void }) {
+function RunnersUp({
+  rows,
+  demo,
+  onOpen,
+}: {
+  rows: ScoreResult[];
+  demo: boolean;
+  onOpen: (r: ScoreResult) => void;
+}) {
   const [open, setOpen] = useState(false);
   if (rows.length === 0) return null;
 
@@ -1091,10 +1099,13 @@ function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreRes
       {open && (
         <ul className="mt-3 space-y-1">
           {rows.map((r, i) => (
-            <li key={`${r.industryKey}-${r.state}`}>
+            <li
+              key={`${r.industryKey}-${r.state}`}
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-white/8 bg-white/3 pr-3 transition-colors hover:bg-white/8"
+            >
               <button
                 onClick={() => onOpen(r)}
-                className="grid w-full grid-cols-[1.4rem_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-xl border border-white/8 bg-white/3 px-3 py-2.5 text-left transition-colors hover:bg-white/8"
+                className="grid w-full grid-cols-[1.4rem_minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-2.5 text-left"
               >
                 <span className="text-[11px] tabular-nums" style={{ color: "var(--cc-muted)" }}>
                   {i + 2}
@@ -1103,8 +1114,8 @@ function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreRes
                   {r.industryLabel} <span style={{ color: "var(--cc-muted)" }}>· {r.stateName}</span>
                 </span>
                 <span className="text-xs tabular-nums" style={{ color: "var(--cc-muted)" }}>
-                  {r.rateCents !== undefined ? `${r.rateCents.toFixed(1)}¢` : "—"} ·{" "}
-                  {euiFor(r) ? `${euiFor(r)} kBtu/sq ft/year` : "—"}
+                  {r.annualSpendUsd !== undefined ? `${formatUsd(r.annualSpendUsd)}/yr per site` : "—"} ·{" "}
+                  {r.rateCents !== undefined ? `${r.rateCents.toFixed(1)}¢` : "—"}
                 </span>
                 <span
                   className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${bandTone(r.band)}`}
@@ -1112,6 +1123,12 @@ function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreRes
                   {r.score.toFixed(0)}
                 </span>
               </button>
+              <ProspectLink
+                row={r}
+                demo={demo}
+                label="Prospect"
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-white/80 hover:bg-white/10 hover:text-white"
+              />
             </li>
           ))}
         </ul>
@@ -1119,6 +1136,7 @@ function RunnersUp({ rows, onOpen }: { rows: ScoreResult[]; onOpen: (r: ScoreRes
     </div>
   );
 }
+
 
 /* ── U.S. rate choropleth ───────────────────────────────────────── */
 
