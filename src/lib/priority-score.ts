@@ -241,6 +241,19 @@ export function formatUsd(n: number): string {
   return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
+/** Annual figure → monthly. Monthly is the primary figure shown everywhere. */
+export function monthlySpend(annual: number): number {
+  return annual / 12;
+}
+
+/** Compact dollars for secondary lines, e.g. "$8.2M". */
+export function formatUsdCompact(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `$${(n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
+  if (abs >= 10_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return formatUsd(n);
+}
+
 export function scoreCombination(input: ScoreInputs): ScoreResult {
   const layer1 = computeBaselineFit(input);
   const layer2 = computeUrgency(input);
