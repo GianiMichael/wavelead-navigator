@@ -1172,7 +1172,7 @@ function RunnersUp({
 }
 
 
-/* ── U.S. rate choropleth ───────────────────────────────────────── */
+/* ── U.S. multi-metric choropleth + ISO overlay ─────────────────── */
 
 interface MapRate {
   state: string;
@@ -1181,17 +1181,87 @@ interface MapRate {
   marketStatus: "deregulated" | "partial";
 }
 
-function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: string) => void }) {
+type MapMetric = "rate" | "wholesale" | "volatility" | "opportunity";
+
+const MAP_METRICS: { key: MapMetric; label: string; unit: string }[] = [
+  { key: "rate", label: "Retail rate", unit: "¢/kWh" },
+  { key: "wholesale", label: "Wholesale price", unit: "$/MWh" },
+  { key: "volatility", label: "Volatility", unit: "% DA vs RT" },
+  { key: "opportunity", label: "Opportunity size", unit: "$/facility/yr" },
+];
+
+/** FIPS → state code, so map shapes can be joined to rate/ISO/score data. */
+const FIPS_TO_CODE = new Map(Object.entries(STATE_FIPS).map(([code, fips]) => [fips, code]));
+const CODE_TO_SHAPE = new Map(
+  US_STATE_SHAPES.flatMap((s) => {
+    const code = FIPS_TO_CODE.get(s.fips);
+    return code ? [[code, s] as const] : [];
+  }),
+);
+
+function formatMetric(metric: MapMetric, v: number): string {
+  if (metric === "rate") return `${v.toFixed(2)}¢/kWh`;
+  if (metric === "wholesale") return `$${v.toFixed(2)}/MWh`;
+  if (metric === "volatility") return `${v.toFixed(0)}% spread`;
+  return `${formatUsd(v)}/yr`;
+}
+
+function UsRateMap({
+  rates,
+  iso,
+  leaderboard,
+  onSelect,
+}: {
+  rates: MapRate[];
+  iso?: IsoPriceResult | undefined;
+  leaderboard: ScoreResult[];
+  onSelect: (state: string) => void;
+}) {
+  const [metric, setMetric] = useState<MapMetric>("rate");
   const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null);
+  const [isoHover, setIsoHover] = useState<{ code: string; x: number; y: number } | null>(null);
 
   const byName = useMemo(() => new Map(rates.map((r) => [r.stateName.toLowerCase(), r])), [rates]);
-  const values = rates.map((r) => r.rateCents);
-  const lo = Math.min(...values, Infinity);
-  const hi = Math.max(...values, -Infinity);
+
+  /** ISO price row per deregulated state (reuses the wholesale panel cache). */
+  const isoByState = useMemo(() => {
+    const m = new Map<string, IsoPrice>();
+    for (const r of iso?.regions ?? []) for (const s of r.states) m.set(s, r);
+    return m;
+  }, [iso]);
+
+  /** Largest per-facility annual spend found in each state. */
+  const spendByState = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of leaderboard) {
+      if (r.annualSpendUsd === undefined) continue;
+      const cur = m.get(r.state);
+      if (cur === undefined || r.annualSpendUsd > cur) m.set(r.state, r.annualSpendUsd);
+    }
+    return m;
+  }, [leaderboard]);
+
+  const valueFor = useMemo(() => {
+    return (r?: MapRate): number | undefined => {
+      if (!r) return undefined;
+      if (metric === "rate") return r.rateCents;
+      if (metric === "wholesale") return isoByState.get(r.state)?.priceMwh ?? undefined;
+      if (metric === "volatility") {
+        const s = isoByState.get(r.state)?.spreadPct;
+        return s === null || s === undefined ? undefined : Math.abs(s);
+      }
+      return spendByState.get(r.state);
+    };
+  }, [metric, isoByState, spendByState]);
+
+  const values = rates.map((r) => valueFor(r)).filter((v): v is number => v !== undefined);
+  const lo = values.length ? Math.min(...values) : 0;
+  const hi = values.length ? Math.max(...values) : 0;
 
   const fill = (r?: MapRate) => {
-    if (!r) return "rgba(255,255,255,0.05)";
-    const t = hi > lo ? (r.rateCents - lo) / (hi - lo) : 0.5;
+    const v = valueFor(r);
+    if (v === undefined) return "rgba(255,255,255,0.05)";
+    const t = hi > lo ? (v - lo) / (hi - lo) : 0.5;
     const l = 0.82 - t * 0.28;
     const c = 0.06 + t * 0.2;
     const hue = 55 - t * 100;
@@ -1200,20 +1270,41 @@ function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: st
 
   const hovered = hover ? byName.get(hover.name.toLowerCase()) : undefined;
   const hoveredMarket = hover ? lookupMarket(hover.name) : undefined;
+  const hoveredValue = valueFor(hovered);
+
+  const activeMetric = MAP_METRICS.find((m) => m.key === metric)!;
+  const legendLabel = (v: number) =>
+    values.length === 0 ? "" : metric === "opportunity" ? formatUsd(v) : formatMetric(metric, v);
+
+  const isoRow = (code: string) => iso?.regions.find((r) => r.iso === code);
+  const hoveredIso = isoHover ? ISO_FOOTPRINTS.find((f) => f.code === isoHover.code) : undefined;
+  const hoveredIsoRow = isoHover ? isoRow(isoHover.code) : undefined;
+
+  const isoCentroid = (codes: string[]) => {
+    const pts = codes.flatMap((c) => {
+      const s = CODE_TO_SHAPE.get(c);
+      return s ? [[s.cx, s.cy] as const] : [];
+    });
+    if (pts.length === 0) return null;
+    return {
+      x: pts.reduce((a, p) => a + p[0], 0) / pts.length,
+      y: pts.reduce((a, p) => a + p[1], 0) / pts.length,
+    };
+  };
 
   return (
     <section className="glass-panel mt-6 rounded-3xl p-6 sm:p-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
-            Map — commercial electricity rate by state
+            Map — {activeMetric.label.toLowerCase()} by state
           </div>
           <h2 className="headline mt-1 text-xl">
             Where power costs the most in <span className="grad-text">open markets</span>
           </h2>
         </div>
         <div className="flex items-center gap-3 text-[11px]" style={{ color: "var(--cc-muted)" }}>
-          <span>{lo === Infinity ? "" : `${lo.toFixed(1)}¢`}</span>
+          <span>{legendLabel(lo)}</span>
           <span
             className="h-2 w-32 rounded-full"
             style={{
@@ -1221,11 +1312,32 @@ function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: st
                 "linear-gradient(90deg, oklch(0.82 0.06 55), oklch(0.68 0.16 5), oklch(0.54 0.26 315))",
             }}
           />
-          <span>{hi === -Infinity ? "" : `${hi.toFixed(1)}¢`}</span>
+          <span>{legendLabel(hi)}</span>
           <span className="ml-2 flex items-center gap-1.5">
-            <span className="inline-block h-2 w-4 rounded-sm bg-white/8" /> not deregulated
+            <span className="inline-block h-2 w-4 rounded-sm bg-white/8" /> no data / not
+            deregulated
           </span>
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-full border border-white/12 bg-white/5 p-1">
+          {MAP_METRICS.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => setMetric(m.key)}
+              className={`rounded-full px-3 py-1 text-[11px] transition-colors ${
+                metric === m.key ? "bg-white/15 text-white" : "text-white/60 hover:text-white"
+              }`}
+              aria-pressed={metric === m.key}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-[11px]" style={{ color: "var(--cc-muted)" }}>
+          Shading scale: {activeMetric.unit}
+        </span>
       </div>
 
       <div className="relative mt-5">
@@ -1233,7 +1345,7 @@ function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: st
           viewBox={`0 0 ${US_MAP_VIEWBOX.width} ${US_MAP_VIEWBOX.height}`}
           className="w-full"
           role="img"
-          aria-label="U.S. commercial electricity rates by state"
+          aria-label={`U.S. ${activeMetric.label} by state with ISO/RTO region overlay`}
         >
           {US_STATE_SHAPES.map((s) => {
             const r = byName.get(s.name.toLowerCase());
@@ -1257,9 +1369,103 @@ function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: st
               />
             );
           })}
+
+          {/* ISO/RTO boundary overlay — outlines only, split states dashed. */}
+          {ISO_FOOTPRINTS.map((f) => {
+            const on = isoHover?.code === f.code;
+            return (
+              <g key={f.code} pointerEvents="none">
+                {[...f.full, ...f.partial].map((code) => {
+                  const shape = CODE_TO_SHAPE.get(code);
+                  if (!shape) return null;
+                  const split = f.partial.includes(code);
+                  return (
+                    <path
+                      key={`${f.code}-${code}`}
+                      d={shape.d}
+                      fill={on ? f.color : "transparent"}
+                      fillOpacity={on ? (split ? 0.1 : 0.18) : 0}
+                      stroke={f.color}
+                      strokeOpacity={on ? 0.95 : 0.4}
+                      strokeWidth={on ? 2 : 1}
+                      strokeDasharray={split ? "4 3" : undefined}
+                    />
+                  );
+                })}
+              </g>
+            );
+          })}
+
+          {/* Interactive ISO labels — hover/click to inspect that market. */}
+          {ISO_FOOTPRINTS.map((f) => {
+            const c = isoCentroid(f.full);
+            if (!c) return null;
+            const on = isoHover?.code === f.code;
+            const w = f.code.length * 7 + 14;
+            return (
+              <g
+                key={`label-${f.code}`}
+                style={{ cursor: "pointer" }}
+                onMouseMove={(e) => {
+                  const box = e.currentTarget.ownerSVGElement?.getBoundingClientRect();
+                  if (!box) return;
+                  setIsoHover({ code: f.code, x: e.clientX - box.left, y: e.clientY - box.top });
+                }}
+                onMouseLeave={() => setIsoHover((h) => (h?.code === f.code ? null : h))}
+                onClick={() => setIsoHover({ code: f.code, x: c.x, y: c.y })}
+              >
+                <rect
+                  x={c.x - w / 2}
+                  y={c.y - 9}
+                  width={w}
+                  height={18}
+                  rx={9}
+                  fill="rgba(0,0,0,0.6)"
+                  stroke={f.color}
+                  strokeOpacity={on ? 1 : 0.6}
+                  strokeWidth={1}
+                />
+                <text
+                  x={c.x}
+                  y={c.y + 4}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fill={f.color}
+                  style={{ pointerEvents: "none", letterSpacing: "0.04em" }}
+                >
+                  {f.code}
+                </text>
+              </g>
+            );
+          })}
         </svg>
 
-        {hover && (
+        {isoHover && hoveredIso && (
+          <div
+            className="pointer-events-none absolute z-20 rounded-xl border border-white/15 bg-black/90 px-3 py-2 text-xs whitespace-nowrap backdrop-blur"
+            style={{ left: isoHover.x, top: isoHover.y - 14, transform: "translate(-50%, -100%)" }}
+          >
+            <div className="font-medium" style={{ color: hoveredIso.color }}>
+              {hoveredIsoRow?.isoName ?? hoveredIso.code}
+            </div>
+            <div style={{ color: "var(--cc-muted)" }}>
+              {hoveredIsoRow?.priceMwh != null
+                ? `$${hoveredIsoRow.priceMwh.toFixed(2)}/MWh day-ahead`
+                : "no cached price"}
+              {hoveredIsoRow?.spreadPct != null &&
+                ` · ${hoveredIsoRow.spreadPct > 0 ? "+" : ""}${hoveredIsoRow.spreadPct.toFixed(0)}% spread`}
+              {hoveredIsoRow?.loadMw != null &&
+                ` · ${Math.round(hoveredIsoRow.loadMw).toLocaleString()} MW load`}
+            </div>
+            {hoveredIso.partial.length > 0 && (
+              <div className="mt-0.5 text-[10px]" style={{ color: "var(--cc-muted)" }}>
+                Split states (dashed): {hoveredIso.partial.join(", ")}
+              </div>
+            )}
+          </div>
+        )}
+
+        {hover && !isoHover && (
           <div
             className="pointer-events-none absolute z-10 rounded-xl border border-white/15 bg-black/85 px-3 py-2 text-xs whitespace-nowrap backdrop-blur"
             style={{ left: hover.x, top: hover.y - 12, transform: "translate(-50%, -100%)" }}
@@ -1267,11 +1473,11 @@ function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: st
             <div className="font-medium">{hover.name}</div>
             <div style={{ color: "var(--cc-muted)" }}>
               {hovered
-                ? `${hovered.rateCents.toFixed(2)}¢/kWh · ${
+                ? `${hoveredValue !== undefined ? formatMetric(metric, hoveredValue) : "no data"} · ${
                     hovered.marketStatus === "partial" ? "Partially deregulated" : "Deregulated"
                   }`
                 : hoveredMarket?.status === "partial"
-                  ? "Partially deregulated · no rate data"
+                  ? "Partially deregulated · no data"
                   : "Regulated market — not actionable"}
             </div>
           </div>
@@ -1280,6 +1486,7 @@ function UsRateMap({ rates, onSelect }: { rates: MapRate[]; onSelect: (state: st
     </section>
   );
 }
+
 
 /* ── Page ───────────────────────────────────────────────────────── */
 
