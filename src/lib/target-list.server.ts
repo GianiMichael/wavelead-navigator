@@ -51,7 +51,7 @@ export async function storeTargetList(period: TargetPeriod, items: ScoreResult[]
         period_id: period.id,
         generated_at: period.generatedAt,
         next_refresh_at: period.nextRefreshAt,
-        items: items.slice(0, LIST_SIZE),
+        items: items.slice(0, LIST_SIZE) as unknown as import("@/integrations/supabase/types").Json,
       },
       { onConflict: "period_id" },
     );
