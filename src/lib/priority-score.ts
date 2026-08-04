@@ -293,7 +293,7 @@ function buildReason(input: ScoreInputs, layer1: BaselineFit): string {
 
   if (layer1.annualSpendUsd !== undefined) {
     parts.push(
-      `A typical ${input.industryLabel.replace(/ \/.*$/, "")} site in ${input.stateName} spends an estimated ${formatUsd(layer1.annualSpendUsd)}/year on electricity`,
+      `A typical ${input.industryLabel.replace(/ \/.*$/, "")} site in ${input.stateName} spends an estimated ${formatUsd(monthlySpend(layer1.annualSpendUsd))}/month on electricity (~${formatUsdCompact(layer1.annualSpendUsd)}/year)`,
     );
   } else {
     parts.push(`${input.industryLabel} in ${input.stateName}`);
