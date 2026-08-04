@@ -16,7 +16,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { AreaCombobox } from "@/components/AreaCombobox";
 import { DemoBadge } from "@/components/DemoBadge";
+
 import { StatBlock } from "@/components/StatBlock";
 import { ProspectTable } from "@/components/ProspectTable";
 import {
@@ -429,12 +431,8 @@ export function LeadEngine({ demo = false }: { demo?: boolean }) {
               </div>
               <div className="space-y-2">
                 <Label className="eyebrow">Area</Label>
-                <Input
-                  className="rounded-lg bg-white/[0.04]"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Dallas, TX"
-                />
+                <AreaCombobox value={location} onChange={setLocation} />
+
                 <div className="text-xs text-muted-foreground">
                   Deregulated: {DEREGULATED_STATES.map((m) => m.code).join(", ")}
                 </div>
