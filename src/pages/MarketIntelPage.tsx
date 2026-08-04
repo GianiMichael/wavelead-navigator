@@ -1258,14 +1258,20 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
 
   const industries = rankedIntensity();
 
+  const unfiltered = industryFilter === "all" && bandFilter === "all";
+
+  /**
+   * Unfiltered view shows the frozen biweekly target list; filtering falls
+   * back to the live leaderboard so drill-down still works.
+   */
   const rows = useMemo(
     () =>
-      data.leaderboard.filter(
+      (unfiltered ? data.targetList : data.leaderboard).filter(
         (r) =>
           (industryFilter === "all" || r.industryKey === industryFilter) &&
           (bandFilter === "all" || r.band === bandFilter),
       ),
-    [data.leaderboard, industryFilter, bandFilter],
+    [data.leaderboard, data.targetList, unfiltered, industryFilter, bandFilter],
   );
 
   const topPick = rows[0];
@@ -1377,13 +1383,13 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
 
           <div className="mt-6">
             {topPick ? (
-              <HeroCard row={topPick} onOpen={() => setSelected(topPick)} />
+              <HeroCard row={topPick} period={data.period} demo={demo} onOpen={() => setSelected(topPick)} />
             ) : (
               <div className="glass-panel rounded-3xl p-8 text-sm" style={{ color: "var(--cc-muted)" }}>
                 No industry + state combination matches these filters.
               </div>
             )}
-            <RunnersUp rows={rows.slice(1, 11)} onOpen={(r) => setSelected(r)} />
+            <RunnersUp rows={rows.slice(1, 11)} demo={demo} onOpen={(r) => setSelected(r)} />
           </div>
 
           <div className="mt-5 grid gap-5 lg:grid-cols-3">
