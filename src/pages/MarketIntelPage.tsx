@@ -1030,8 +1030,11 @@ function DetailPanel({
 
   const stats: { label: string; value: string }[] = [
     {
-      label: "Est. annual spend / facility",
-      value: row.annualSpendUsd !== undefined ? `${formatUsd(row.annualSpendUsd)}/year` : "n/a",
+      label: "Est. monthly spend / facility",
+      value:
+        row.annualSpendUsd !== undefined
+          ? `${formatUsd(monthlySpend(row.annualSpendUsd))}/month · ~${formatUsdCompact(row.annualSpendUsd)}/year`
+          : "n/a",
     },
     {
       label: "Commercial electricity rate",
