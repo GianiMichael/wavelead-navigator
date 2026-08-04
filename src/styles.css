@@ -87,7 +87,7 @@
   --card-foreground: oklch(0.97 0.008 280);
   --popover: oklch(0.19 0.03 275);
   --popover-foreground: oklch(0.97 0.008 280);
-  --primary: oklch(0.66 0.26 340);
+  --primary: oklch(0.64 0.17 297);
   --primary-foreground: oklch(0.99 0.005 300);
   --secondary: oklch(0.24 0.03 275);
   --secondary-foreground: oklch(0.97 0.008 280);
@@ -99,20 +99,20 @@
   --destructive-foreground: oklch(0.98 0.005 280);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.66 0.26 340);
+  --ring: oklch(0.64 0.17 297);
   --chart-1: oklch(0.62 0.24 300);
-  --chart-2: oklch(0.66 0.26 340);
+  --chart-2: oklch(0.64 0.17 297);
   --chart-3: oklch(0.82 0.15 55);
   --chart-4: oklch(0.72 0.14 200);
   --chart-5: oklch(0.78 0.16 60);
   --sidebar: oklch(0.19 0.03 275);
   --sidebar-foreground: oklch(0.97 0.008 280);
-  --sidebar-primary: oklch(0.66 0.26 340);
+  --sidebar-primary: oklch(0.64 0.17 297);
   --sidebar-primary-foreground: oklch(0.99 0.005 300);
   --sidebar-accent: oklch(0.24 0.03 275);
   --sidebar-accent-foreground: oklch(0.97 0.008 280);
   --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.66 0.26 340);
+  --sidebar-ring: oklch(0.64 0.17 297);
 }
 
 
@@ -195,8 +195,9 @@
   --cc-muted: oklch(0.72 0.026 280);
   --cc-grad: linear-gradient(
     100deg,
-    oklch(0.55 0.14 300) 0%,
-    oklch(0.72 0.12 55) 100%
+    oklch(0.68 0.22 295) 0%,
+    oklch(0.74 0.19 20) 52%,
+    oklch(0.85 0.15 62) 100%
   );
   background-color: var(--cc-bg);
   color: var(--cc-fg);
@@ -221,7 +222,7 @@
     background: color-mix(in oklab, white 9%, transparent);
     box-shadow:
       inset 0 1px 0 color-mix(in oklab, white 18%, transparent),
-      0 26px 60px -30px oklch(0.66 0.26 340 / 0.7);
+      0 26px 60px -30px oklch(0.64 0.17 297 / 0.6);
   }
 }
 
@@ -233,4 +234,38 @@
 
 @utility grad-fill {
   background-image: var(--cc-grad);
+}
+
+@utility glass-btn {
+  position: relative;
+  background: color-mix(in oklab, var(--color-primary) 12%, color-mix(in oklab, white 6%, transparent));
+  border: 1px solid color-mix(in oklab, white 16%, transparent);
+  color: var(--color-foreground);
+  backdrop-filter: blur(16px) saturate(150%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 18%, transparent),
+    0 10px 24px -18px oklch(0 0 0 / 0.9);
+  transition:
+    background 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--color-primary) 30%, color-mix(in oklab, white 8%, transparent));
+    border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 24%, transparent),
+      0 14px 34px -20px color-mix(in oklab, var(--color-primary) 70%, transparent);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+@utility glass-btn-active {
+  background: color-mix(in oklab, var(--color-primary) 34%, transparent);
+  border-color: color-mix(in oklab, var(--color-primary) 60%, transparent);
 }
