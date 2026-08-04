@@ -96,3 +96,42 @@ export function isoForState(state?: string | null): IsoRegion | undefined {
   if (!state) return undefined;
   return STATE_TO_ISO.get(state.trim().toUpperCase());
 }
+
+/**
+ * Approximate map footprints for the boundary overlay. ISO territories follow
+ * utility service areas, not state lines, so several states are split between
+ * markets — those are listed under `partial` and drawn with a dashed outline.
+ */
+export interface IsoFootprint {
+  code: string;
+  /** States served (essentially) in full by this ISO. */
+  full: string[];
+  /** States split between this ISO and another market. */
+  partial: string[];
+  /** Overlay outline color. */
+  color: string;
+}
+
+export const ISO_FOOTPRINTS: IsoFootprint[] = [
+  { code: "ERCOT", full: ["TX"], partial: [], color: "oklch(0.80 0.16 55)" },
+  {
+    code: "PJM",
+    full: ["PA", "NJ", "MD", "DC", "DE", "OH", "WV", "VA"],
+    partial: ["IL", "IN", "KY", "NC", "TN", "MI"],
+    color: "oklch(0.72 0.19 300)",
+  },
+  { code: "NYISO", full: ["NY"], partial: [], color: "oklch(0.78 0.15 200)" },
+  {
+    code: "ISONE",
+    full: ["MA", "CT", "ME", "NH", "RI", "VT"],
+    partial: [],
+    color: "oklch(0.82 0.13 150)",
+  },
+  { code: "CAISO", full: ["CA"], partial: [], color: "oklch(0.80 0.14 25)" },
+  {
+    code: "MISO",
+    full: ["IA", "MN", "ND", "SD", "WI", "AR", "LA", "MS"],
+    partial: ["IL", "IN", "MI", "MO", "MT", "TX", "KY"],
+    color: "oklch(0.75 0.14 250)",
+  },
+];
