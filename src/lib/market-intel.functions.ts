@@ -12,6 +12,7 @@ import {
   isGridRange,
 } from "@/lib/market-intel.server";
 import { scoreCombination, type ScoreResult } from "@/lib/priority-score";
+import { readStoredTargetList, storeTargetList, TARGET_LIST_SIZE } from "@/lib/target-list.server";
 import { currentTargetPeriod } from "@/lib/target-period";
 
 function monthName(period: string) {
@@ -89,8 +90,17 @@ export const getMarketIntel = createServerFn({ method: "GET" }).handler(async ()
   }
   leaderboard.sort((a, b) => b.score - a.score);
 
+  // The target list itself is frozen for the whole 14-day period; the rest of
+  // the leaderboard stays available for filtering and drill-down.
+  let targetList = await readStoredTargetList(period.id);
+  if (!targetList) {
+    targetList = leaderboard.slice(0, TARGET_LIST_SIZE);
+    await storeTargetList(period, targetList);
+  }
+
   return {
     leaderboard,
+    targetList,
     period,
     rates: ratesResult,
     density: densityResult,
