@@ -12,7 +12,14 @@ import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
 
 import { getIsoPrices, type IsoPrice, type IsoPriceResult } from "@/lib/iso-prices.functions";
 import { getGridDemand, getMarketIntel } from "@/lib/market-intel.functions";
-import { bandLabel, formatUsd, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
+import {
+  bandLabel,
+  formatUsd,
+  formatUsdCompact,
+  monthlySpend,
+  type PriorityBand,
+  type ScoreResult,
+} from "@/lib/priority-score";
 import { periodDateLabel, type TargetPeriod } from "@/lib/target-period";
 
 export const intelQuery = queryOptions({
