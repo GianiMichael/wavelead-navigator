@@ -172,8 +172,11 @@ function HeroCard({
       {row.annualSpendUsd !== undefined && (
         <p className="mt-2 text-sm" style={{ color: "var(--cc-muted)" }}>
           A typical {row.industryLabel.replace(/ \/.*$/, "")} site in {row.stateName} spends an
-          estimated <span className="font-semibold text-white">{formatUsd(row.annualSpendUsd)}/year</span>{" "}
-          on electricity.
+          estimated{" "}
+          <span className="font-semibold text-white">
+            {formatUsd(monthlySpend(row.annualSpendUsd))}/month
+          </span>{" "}
+          on electricity (~{formatUsdCompact(row.annualSpendUsd)}/year).
         </p>
       )}
 
@@ -181,6 +184,11 @@ function HeroCard({
         {stats.map((s) => (
           <div key={s.label} className="rounded-2xl border border-white/10 bg-white/4 p-4">
             <div className="text-2xl font-semibold tabular-nums sm:text-3xl">{s.value}</div>
+            {s.sub && (
+              <div className="mt-0.5 text-[11px] tabular-nums" style={{ color: "var(--cc-muted)" }}>
+                {s.sub}
+              </div>
+            )}
             <div className="mt-1 text-[11px]" style={{ color: "var(--cc-muted)" }}>
               {s.unit}
             </div>
@@ -188,6 +196,7 @@ function HeroCard({
           </div>
         ))}
       </div>
+
 
       <div className="mt-5 rounded-2xl border border-white/10 bg-white/4 p-4">
         <div className="eyebrow text-[10px]">Why now</div>
