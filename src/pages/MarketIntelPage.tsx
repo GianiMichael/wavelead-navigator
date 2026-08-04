@@ -259,19 +259,30 @@ function StateRatesPanel({
   );
 }
 
-/* ── 3. Energy intensity by industry (reference) ────────────────── */
+/* ── 3. Annual energy use per facility (reference) ──────────────── */
+
+/** kBtu/year → readable MMBtu/Bn Btu string. */
+function formatAnnualKbtu(kbtu: number): string {
+  const mmbtu = kbtu / 1000;
+  if (mmbtu >= 1000) return `${(mmbtu / 1000).toFixed(1)}B Btu`;
+  return `${Math.round(mmbtu).toLocaleString()} MMBtu`;
+}
 
 function IntensityPanel({ onSelect }: { onSelect: (industryKey: string) => void }) {
   const [showAll, setShowAll] = useState(false);
-  const all = rankedIntensity().filter((e) => e.siteEui !== undefined);
+  /** Ranked by real per-deal size: intensity × typical building footprint. */
+  const all = rankedIntensity()
+    .filter((e) => e.siteEui !== undefined && e.avgSqFt !== undefined)
+    .map((e) => ({ ...e, annualKbtu: (e.siteEui ?? 0) * (e.avgSqFt ?? 0) }))
+    .sort((a, b) => b.annualKbtu - a.annualKbtu);
   const shown = showAll ? all : all.slice(0, 5);
-  const max = all[0]?.siteEui ?? 1;
+  const max = all[0]?.annualKbtu ?? 1;
 
   return (
     <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="eyebrow" style={{ color: "var(--cc-muted)" }}>
-          Total combined energy intensity (kBtu/sq ft/year)
+          Annual energy use per facility
         </div>
         <span
           className="rounded-full border border-white/12 px-2 py-0.5 text-[10px]"
@@ -281,7 +292,8 @@ function IntensityPanel({ onSelect }: { onSelect: (industryKey: string) => void 
         </span>
       </div>
       <p className="mt-1 text-[11px]" style={{ color: "var(--cc-muted)" }}>
-        Electricity + natural gas · CBECS {CBECS_SOURCE.dataDate}
+        Intensity × typical building size · electricity + natural gas · CBECS{" "}
+        {CBECS_SOURCE.dataDate}
       </p>
 
       <ul className={`mt-4 space-y-1 ${showAll ? "max-h-[300px] overflow-y-auto pr-1" : ""}`}>
@@ -299,11 +311,21 @@ function IntensityPanel({ onSelect }: { onSelect: (industryKey: string) => void 
                 <span className="mt-1 block h-1.5 rounded-full bg-white/8">
                   <span
                     className="block h-1.5 rounded-full bg-white/35"
-                    style={{ width: `${((e.siteEui ?? 0) / max) * 100}%` }}
+                    style={{ width: `${(e.annualKbtu / max) * 100}%` }}
                   />
                 </span>
               </span>
-              <span className="text-sm font-semibold tabular-nums">{e.siteEui}</span>
+              <span className="text-right">
+                <span className="block text-sm font-semibold tabular-nums">
+                  {formatAnnualKbtu(e.annualKbtu)}
+                </span>
+                <span
+                  className="mt-0.5 block text-[10px] tabular-nums"
+                  style={{ color: "var(--cc-muted)" }}
+                >
+                  {e.siteEui} kBtu/sq ft/year · {(e.avgSqFt ?? 0).toLocaleString()} sq ft
+                </span>
+              </span>
             </button>
           </li>
         ))}
@@ -321,6 +343,7 @@ function IntensityPanel({ onSelect }: { onSelect: (industryKey: string) => void 
     </div>
   );
 }
+
 
 /* ── 4. Live grid demand ────────────────────────────────────────── */
 
