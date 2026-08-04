@@ -24,8 +24,8 @@ Keep the dark command-center aesthetic and the existing color scheme, but make t
 - `src/styles.css` — redefine `--cc-grad`, add a subtle solid primary hover utility if needed.
 - `src/components/StatBlock.tsx` — remove `grad-text` from accent state.
 - `src/pages/LeadEnginePage.tsx` — replace `grad-fill` button with solid primary.
-- `src/pages/PipelinePage.tsx` — replace `grad-fill` on sync button, active chips, and distribution bars.
-- `src/pages/MarketIntelPage.tsx` — replace inline gradients on ProspectLink and rate bars; keep only hero word accents.
+- `src/pages/PipelinePage.tsx` — replace `grad-fill` on sync button and active chips.
+- `src/pages/MarketIntelPage.tsx` — replace inline gradient on ProspectLink; keep only hero word accents.
 - `src/routes/index.tsx` — replace `grad-fill` buttons with solid primary.
 
 ## Outcome
