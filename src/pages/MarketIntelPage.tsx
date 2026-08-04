@@ -103,11 +103,17 @@ function HeroCard({
   demo: boolean;
   onOpen: () => void;
 }) {
-  const stats = [
+  const stats: { label: string; value: string; unit: string; sub?: string }[] = [
     {
-      label: "Est. annual electricity spend",
-      value: row.annualSpendUsd !== undefined ? formatUsd(row.annualSpendUsd) : "n/a",
+      label: "Est. monthly electricity spend",
+      value:
+        row.annualSpendUsd !== undefined
+          ? formatUsd(monthlySpend(row.annualSpendUsd))
+          : "n/a",
       unit: "per typical facility",
+      ...(row.annualSpendUsd !== undefined
+        ? { sub: `~${formatUsdCompact(row.annualSpendUsd)}/year` }
+        : {}),
     },
     {
       label: "Commercial electricity rate",
