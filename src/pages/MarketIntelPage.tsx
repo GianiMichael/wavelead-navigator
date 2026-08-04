@@ -5,11 +5,12 @@ import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query"
 import { DemoBadge } from "@/components/DemoBadge";
 import { lookupMarket } from "@/data/deregulated-markets";
 import { CBECS_SOURCE, intensityForIndustry, rankedIntensity } from "@/data/energy-intensity";
-import { naicsForIndustry, CBP_VINTAGE } from "@/data/naics-map";
+import { naicsForIndustry, CBP_VINTAGE, STATE_FIPS } from "@/data/naics-map";
+import { ISO_FOOTPRINTS } from "@/data/iso-regions";
 import { steoRegionForState } from "@/data/steo-regions";
 import { US_MAP_VIEWBOX, US_STATE_SHAPES } from "@/data/us-state-paths";
 
-import { getIsoPrices } from "@/lib/iso-prices.functions";
+import { getIsoPrices, type IsoPrice, type IsoPriceResult } from "@/lib/iso-prices.functions";
 import { getGridDemand, getMarketIntel } from "@/lib/market-intel.functions";
 import { bandLabel, formatUsd, type PriorityBand, type ScoreResult } from "@/lib/priority-score";
 import { periodDateLabel, type TargetPeriod } from "@/lib/target-period";
@@ -1498,6 +1499,8 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
   const [bandFilter, setBandFilter] = useState("all");
 
   const industries = rankedIntensity();
+  /** Shared cache — the wholesale panel already primed this query. */
+  const { data: isoData } = useQuery(isoPricesQuery);
 
   const unfiltered = industryFilter === "all" && bandFilter === "all";
 
@@ -1657,6 +1660,8 @@ export function PriorityTargetsPage({ demo = false }: { demo?: boolean }) {
 
 
           <UsRateMap
+            {...(isoData ? { iso: isoData } : {})}
+            leaderboard={data.leaderboard}
             rates={data.rates.rates.map((r) => ({
               state: r.state,
               stateName: r.stateName,
